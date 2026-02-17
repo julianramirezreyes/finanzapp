@@ -60,6 +60,7 @@ class TransactionRepository {
     String? householdId,
     String? budgetId,
     String? destinationAccountId,
+    bool excludeFromBalance = false,
   }) async {
     try {
       final payload = {
@@ -70,6 +71,7 @@ class TransactionRepository {
         'description': description,
         'date': date.toUtc().toIso8601String(),
         'context': context,
+        'exclude_from_balance': excludeFromBalance,
       };
 
       if (householdId != null) {

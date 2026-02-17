@@ -31,6 +31,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String _context = 'personal'; // personal, household
   String? _accountId;
   String? _destinationAccountId; // For transfers
+  bool _excludeFromBalance = false;
 
   // Selection Logic for Category/Budget
   // Value format: "static:Name" or "budget:UUID"
@@ -48,6 +49,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _context = t.context;
       _accountId = t.accountId;
       _destinationAccountId = t.destinationAccountId;
+      _excludeFromBalance = t.excludeFromBalance;
 
       // Pre-select category/budget
       if (t.budgetId != null) {
@@ -281,6 +283,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           _type == 'transfer' && v == null ? 'Requerido' : null,
                     ),
                   ],
+
+                  const SizedBox(height: 16),
+
+                  // Exclude from Balance Switch
+                  SwitchListTile(
+                    title: const Text('No afectar saldo'),
+                    subtitle: const Text(
+                      'Regístralo en el historial pero no descuentes dinero',
+                    ),
+                    value: _excludeFromBalance,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _excludeFromBalance = value;
+                      });
+                    },
+                    secondary: const Icon(Icons.money_off),
+                  ),
 
                   const SizedBox(height: 32),
 
@@ -537,6 +556,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             budgetId: finalBudgetId,
             destinationAccountId: _destinationAccountId,
             userId: t.userId, // Maintain user ID
+            excludeFromBalance: _excludeFromBalance,
           );
 
           await ref
@@ -562,6 +582,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 householdId: finalHouseholdId,
                 budgetId: finalBudgetId,
                 destinationAccountId: _destinationAccountId,
+                excludeFromBalance: _excludeFromBalance,
               );
           if (mounted) {
             ScaffoldMessenger.of(
