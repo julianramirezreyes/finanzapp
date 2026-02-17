@@ -20,8 +20,8 @@ class HistoryRepository {
       final response = await _dio.get(
         '/history/personal',
         queryParameters: {
-          if (month != null) 'month': month,
-          if (year != null) 'year': year,
+          'month': ?month,
+          'year': ?year,
         },
       );
       return PersonalHistorySummary.fromJson(response.data);

@@ -1,6 +1,6 @@
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
 import 'package:finanzapp_v2/features/household/data/household_repository.dart';
-import 'package:finanzapp_v2/features/household/presentation/household_dashboard.dart';
+import 'package:finanzapp_v2/features/household/presentation/household_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -114,7 +114,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             }
 
             if (household.status == 'active') {
-              return HouseholdDashboard(household: household);
+              return HouseholdHistoryScreen(household: household);
             }
 
             return Center(

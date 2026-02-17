@@ -89,4 +89,26 @@ class TransactionRepository {
       throw Exception('Failed to create transaction: $e');
     }
   }
+
+  Future<void> updateTransaction(Transaction transaction) async {
+    try {
+      // Assuming API accepts partial or full updates. Sending full body is safer given current backend.
+      // We need to map camelCase fields back to snake_case for API if toJson() doesn't do it perfectly matches backend expectations.
+      // Our toJson() maps to snake_case, so it should be fine.
+      await _dio.put(
+        '/transactions/${transaction.id}',
+        data: transaction.toJson(),
+      );
+    } catch (e) {
+      throw Exception('Error updating transaction: $e');
+    }
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    try {
+      await _dio.delete('/transactions/$id');
+    } catch (e) {
+      throw Exception('Error deleting transaction: $e');
+    }
+  }
 }

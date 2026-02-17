@@ -60,4 +60,18 @@ class AccountRepository {
       throw Exception('Failed to update account: $e');
     }
   }
+
+  Future<void> reorderAccounts(List<Account> accounts) async {
+    try {
+      final items = accounts
+          .asMap()
+          .entries
+          .map((e) => {'id': e.value.id, 'order': e.key})
+          .toList();
+
+      await _dio.post('/accounts/reorder', data: items);
+    } catch (e) {
+      throw Exception('Failed to reorder accounts: $e');
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:finanzapp_v2/core/network/dio_client.dart';
 import 'package:finanzapp_v2/features/household/domain/household_snapshot.dart';
@@ -19,6 +20,7 @@ class HouseholdSnapshotRepository {
         '/households/$householdId/sync',
         data: {'year': year, 'month': month},
       );
+      print('Sync Output: ${response.data} Type: ${response.data.runtimeType}');
       return response.data['id'];
     } catch (e) {
       throw Exception('Failed to sync snapshot: $e');
@@ -34,9 +36,57 @@ class HouseholdSnapshotRepository {
       final response = await _dio.get(
         '/households/$householdId/snapshot',
         queryParameters: {'year': year, 'month': month},
+        options: Options(
+          validateStatus: (status) => true, // Handle all statuses manually
+        ),
       );
 
+      print('Snapshot Response Status: ${response.statusCode}');
+      print('Snapshot Response Data Type: ${response.data.runtimeType}');
+
+      if (response.statusCode == 404) {
+        throw Exception('Snapshot not found (404)');
+      }
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Failed to fetch snapshot: Status ${response.statusCode}',
+        );
+      }
+
       final data = response.data;
+
+      // FALLBACK: If status was 200 but body is String (likely due to missing Content-Type header),
+      // try to parse it as JSON manually.
+      if (data is String) {
+        print('Snapshot Data improperly returned as String: $data');
+        if (data.contains('404') || data.contains('Not Found')) {
+          throw Exception('Snapshot not found (404-in-body)');
+        }
+
+        try {
+          final decoded = jsonDecode(data);
+          if (decoded is Map<String, dynamic>) {
+            return {
+              'snapshot': HouseholdSnapshot.fromJson(decoded['snapshot']),
+              'items': (decoded['items'] as List)
+                  .map((e) => HouseholdItem.fromJson(e))
+                  .toList(),
+            };
+          }
+        } catch (e) {
+          print('Failed to parse fallback JSON: $e');
+        }
+
+        throw Exception('Invalid data format: Expected Map, got String: $data');
+      }
+
+      if (data is! Map<String, dynamic>) {
+        throw Exception(
+          'Invalid data format: Expected Map, got ${data.runtimeType}',
+        );
+      }
+
       return {
         'snapshot': HouseholdSnapshot.fromJson(data['snapshot']),
         'items': (data['items'] as List)
@@ -44,6 +94,8 @@ class HouseholdSnapshotRepository {
             .toList(),
       };
     } catch (e) {
+      // Re-throw if it's already a clean exception, otherwise wrap
+      if (e.toString().contains('404')) rethrow;
       throw Exception('Failed to fetch snapshot: $e');
     }
   }

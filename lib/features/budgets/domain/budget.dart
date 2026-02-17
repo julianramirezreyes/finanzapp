@@ -14,7 +14,7 @@ class Budget {
   final int months;
   final bool isRecurrent;
   final double monthlyQuota;
-  final int orderIndex;
+  final int displayOrder;
 
   Budget({
     required this.id,
@@ -31,7 +31,7 @@ class Budget {
     this.months = 1,
     this.isRecurrent = false,
     this.monthlyQuota = 0,
-    this.orderIndex = 0,
+    this.displayOrder = 0,
   });
 
   factory Budget.fromJson(Map<String, dynamic> json) {
@@ -54,7 +54,7 @@ class Budget {
       months: json['months'] ?? 1,
       isRecurrent: json['is_recurrent'] ?? false,
       monthlyQuota: (json['monthly_quota'] as num?)?.toDouble() ?? 0,
-      orderIndex: json['order_index'] ?? 0,
+      displayOrder: json['display_order'] ?? json['order_index'] ?? 0,
     );
   }
 
@@ -70,7 +70,43 @@ class Budget {
       'color': color,
       'months': months,
       'is_recurrent': isRecurrent,
-      'order_index': orderIndex,
+      'display_order': displayOrder,
     };
+  }
+
+  Budget copyWith({
+    String? id,
+    String? userId,
+    String? category,
+    double? limitAmount,
+    String? period,
+    String? type,
+    double? targetAmount,
+    double? currentAmount,
+    DateTime? targetDate,
+    String? icon,
+    String? color,
+    int? months,
+    bool? isRecurrent,
+    double? monthlyQuota,
+    int? displayOrder,
+  }) {
+    return Budget(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      category: category ?? this.category,
+      limitAmount: limitAmount ?? this.limitAmount,
+      period: period ?? this.period,
+      type: type ?? this.type,
+      targetAmount: targetAmount ?? this.targetAmount,
+      currentAmount: currentAmount ?? this.currentAmount,
+      targetDate: targetDate ?? this.targetDate,
+      icon: icon ?? this.icon,
+      color: color ?? this.color,
+      months: months ?? this.months,
+      isRecurrent: isRecurrent ?? this.isRecurrent,
+      monthlyQuota: monthlyQuota ?? this.monthlyQuota,
+      displayOrder: displayOrder ?? this.displayOrder,
+    );
   }
 }

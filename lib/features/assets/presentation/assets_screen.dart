@@ -151,7 +151,7 @@ class AssetsScreen extends ConsumerWidget {
                   keyboardType: TextInputType.number,
                 ),
                 DropdownButtonFormField<String>(
-                  value: type,
+                  initialValue: type,
                   items: const [
                     DropdownMenuItem(value: 'vehicle', child: Text("Vehículo")),
                     DropdownMenuItem(

@@ -97,7 +97,7 @@ class BudgetRepository {
       final items = budgets
           .asMap()
           .entries
-          .map((e) => {'id': e.value.id, 'order_index': e.key})
+          .map((e) => {'id': e.value.id, 'order': e.key})
           .toList();
 
       await _dio.post('/budgets/reorder', data: items);

@@ -125,20 +125,22 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  title: const Text("Pagado por Usuario A"),
+                  title: const Text(
+                    "Pagado por Ti",
+                  ), // Assuming User A is current user, or just generic renaming as requested
                   trailing: Text("\$${settlement.paidByA.toStringAsFixed(2)}"),
                 ),
                 ListTile(
-                  title: const Text("Pagado por Usuario B"),
+                  title: const Text("Pagado por tu Pareja"),
                   trailing: Text("\$${settlement.paidByB.toStringAsFixed(2)}"),
                 ),
                 const Divider(),
                 ListTile(
-                  title: const Text("Parte Usuario A (50%)"),
+                  title: const Text("Tu Parte (50%)"),
                   trailing: Text("\$${settlement.shareA.toStringAsFixed(2)}"),
                 ),
                 ListTile(
-                  title: const Text("Parte Usuario B (50%)"),
+                  title: const Text("Parte de tu Pareja (50%)"),
                   trailing: Text("\$${settlement.shareB.toStringAsFixed(2)}"),
                 ),
 

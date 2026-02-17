@@ -8,6 +8,11 @@ class Transaction {
   final DateTime date;
   final String context; // personal, household
 
+  final String? householdId;
+  final String? budgetId;
+  final String? destinationAccountId;
+  final String userId;
+
   Transaction({
     required this.id,
     required this.accountId,
@@ -17,6 +22,10 @@ class Transaction {
     required this.description,
     required this.date,
     required this.context,
+    this.householdId,
+    this.budgetId,
+    this.destinationAccountId,
+    required this.userId,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -29,6 +38,59 @@ class Transaction {
       description: json['description'] ?? '',
       date: DateTime.parse(json['date']),
       context: json['context'],
+      householdId: json['household_id'],
+      budgetId: json['budget_id'],
+      destinationAccountId: json['destination_account_id'],
+      userId:
+          json['user_id'] ??
+          '', // Handle potential missing user_id if logic allows, usually required
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'account_id': accountId,
+      'amount': amount,
+      'type': type,
+      'category': category,
+      'description': description,
+      'date': date.toIso8601String(),
+      'context': context,
+      'household_id': householdId,
+      'budget_id': budgetId,
+      'destination_account_id': destinationAccountId,
+      'user_id': userId,
+    };
+  }
+
+  Transaction copyWith({
+    String? id,
+    String? accountId,
+    double? amount,
+    String? type,
+    String? category,
+    String? description,
+    DateTime? date,
+    String? context,
+    String? householdId,
+    String? budgetId,
+    String? destinationAccountId,
+    String? userId,
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      date: date ?? this.date,
+      context: context ?? this.context,
+      householdId: householdId ?? this.householdId,
+      budgetId: budgetId ?? this.budgetId,
+      destinationAccountId: destinationAccountId ?? this.destinationAccountId,
+      userId: userId ?? this.userId,
     );
   }
 }

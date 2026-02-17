@@ -44,19 +44,12 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
 
   Future<void> _saveConfig() async {
     final income = double.tryParse(_incomeController.text) ?? 0;
-
-    // Fetch current config to keep ID if exists?
-    // The upsert on backend handles logic based on user_id context if ID not provided?
-    // Actually Backend UpsertConfig uses ID if provided, or creates new for user_id/household_id.
-    // We should probably preserve the ID from the fetched config.
-    // Simplify: The provider gives us the current config.
-
     final currentConfig = await ref.read(
       budgetConfigProvider((type: 'personal', householdId: null)).future,
     );
 
     final newConfig = BudgetConfig(
-      id: currentConfig.id, // Keep existing ID
+      id: currentConfig.id, 
       userId: currentConfig.userId,
       personalIncome: income,
       pctExpense: _pctExpense.round(),
@@ -117,7 +110,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                   const Text(
                     "Mi Presupuesto Personal (Residual)",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
@@ -338,7 +331,6 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     final householdAsync = ref.watch(householdProvider);
     final householdId = householdAsync.valueOrNull?.id;
 
-    // If we have a household, check its budget config
     if (householdId != null) {
       final hhConfigAsync = ref.watch(
         budgetConfigProvider((type: 'household', householdId: householdId)),
@@ -349,29 +341,20 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
         data: (config) {
           return hhBudgetsAsync.maybeWhen(
             data: (budgets) {
-              // 1. Calculate Total Household Expenses (Goals + Fixed)
               double totalHhExpenses = 0;
               for (var b in budgets) {
                 totalHhExpenses += b.monthlyQuota;
               }
 
-              // 2. Calculate Contribution Ratio
               final incomeA = config.incomeA;
               final incomeB = config.incomeB;
               final totalIncome = incomeA + incomeB;
 
               if (totalIncome <= 0) return const SizedBox.shrink();
 
-              // Assuming User is A (first person who set it up).
-              // Optimization: Check auth ID against config if possible, but default to A simplistically
-              // or just show generic "Si aportas X%".
-              // Let's assume incomeA is "Tu Ingreso" as labeled in Household Tab.
+              // Default to Income A for user context
               final myRatio = incomeA / totalIncome;
-
-              // 3. Calculate My Share
               final myShare = totalHhExpenses * myRatio;
-
-              // 4. Calculate Residual
               final residual = incomeA - myShare;
 
               if (residual > 0) {
@@ -422,7 +405,6 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   }
 
   Widget _buildGoalsSection(BuildContext context, WidgetRef ref) {
-    // householdId = null means Personal
     final budgetsAsync = ref.watch(budgetsListProvider(null));
     final double totalIncome = double.tryParse(_incomeController.text) ?? 0;
 
@@ -483,7 +465,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
                 const Divider(),
                 if (budgets.isEmpty)
-                  const Padding(
+                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: Text(
@@ -493,16 +475,37 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     ),
                   )
                 else
-                  ListView.builder(
+                  ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: budgets.length,
+                    onReorder: (oldIndex, newIndex) {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      final item = budgets.removeAt(oldIndex);
+                      budgets.insert(newIndex, item);
+                      
+                      // Optimize update: Update only if needed or just sync
+                      // Can't update the provider list directly as it's immutable usually from network?
+                      // Actually riverpod AsyncValue data is not mutable directly for the provider unless using a class notifier.
+                      // But effectively we can trigger the API call.
+                      // The list here is a local copy since when().
+                      // Actually, 'budgets' list from when(data:) is just a valid List.
+                      
+                      ref.read(budgetRepositoryProvider).reorderBudgets(budgets)
+                         .then((_) => ref.invalidate(budgetsListProvider(null)));
+                    },
                     itemBuilder: (context, index) {
                       final budget = budgets[index];
-                      return BudgetCard(
-                        budget: budget,
-                        currentAmount: budget.currentAmount,
-                        onTap: () => _showEditGoalDialog(context, ref, budget),
+                      return Container(
+                        key: ValueKey(budget.id),
+                         margin: const EdgeInsets.only(bottom: 8),
+                        child: BudgetCard(
+                          budget: budget,
+                          currentAmount: budget.currentAmount,
+                          onTap: () => _showEditGoalDialog(context, ref, budget),
+                        ),
                       );
                     },
                   ),
@@ -538,7 +541,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
             "Usado: ${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(used)} / ${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(total)}  (Quedan: ${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(remaining)})",
             style: TextStyle(
               color: isOver ? Colors.red : Colors.grey[700],
-              fontSize: 11, // Reduced font size slightly to fit
+              fontSize: 11,
               fontWeight: isOver ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -631,7 +634,6 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
 
                 if (category.isEmpty || amount <= 0) return;
 
-                // Create Budget (Personal -> householdId = null)
                 try {
                   await ref
                       .read(budgetRepositoryProvider)
@@ -645,9 +647,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                         householdId: null, // Personal
                       );
 
-                  // Invalidate provider to refresh list
                   ref.invalidate(budgetsListProvider(null));
-
                   if (context.mounted) Navigator.pop(ctx);
                 } catch (e) {
                   ScaffoldMessenger.of(
@@ -664,45 +664,77 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   }
 
   void _showEditGoalDialog(BuildContext context, WidgetRef ref, Budget budget) {
-    // For now, simplistically implementation: Delete only or show details.
-    // User asked "editarla todo o eliminarla".
-    // I will implement a dialog with "Eliminar" button and inputs pre-filled.
-
     final nameController = TextEditingController(text: budget.category);
     final amountController = TextEditingController(
       text: budget.limitAmount.toStringAsFixed(0),
     );
-    // If recurrent, limitAmount is monthly quota usually in the UI logic?
-    // Backend: limitAmount is total or monthly.
-    // In Create: isRecurrent -> monthlyQuota = limitAmount.
+    String selectedType = budget.type;
+    int months = budget.months > 0 ? budget.months : 1;
 
     if (!mounted) return;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         title: const Text("Editar Meta"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController, // Read-only for now or editable?
-              decoration: const InputDecoration(labelText: "Nombre"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Valor",
-                prefixText: "\$",
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: "Nombre"),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (budget.currentAmount > 0)
-              Text(
-                "Progreso actual: \$${budget.currentAmount.toStringAsFixed(0)}",
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Valor Mensual / Total",
+                  prefixText: "\$",
+                ),
               ),
-          ],
+               const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedType, // Ensure this matches allowed items
+                  decoration: const InputDecoration(
+                    labelText: "Tipo",
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'expense',
+                      child: Text("Gasto Fijo"),
+                    ),
+                    DropdownMenuItem(value: 'saving', child: Text("Ahorro")),
+                    DropdownMenuItem(value: 'savings', child: Text("Ahorro (Legacy)")), // Handle potential legacy strings
+                    DropdownMenuItem(
+                      value: 'investment',
+                      child: Text("Inversión"),
+                    ),
+                  ],
+                  onChanged: (val) => setState(() => selectedType = val!),
+                ),
+                if (selectedType != 'expense') ...[
+                  const SizedBox(height: 16),
+                  Text("Plazo: $months meses"),
+                  Slider(
+                    value: months.toDouble(),
+                    min: 1,
+                    max: 36,
+                    divisions: 35,
+                    label: "$months meses",
+                    onChanged: (val) => setState(() => months = val.round()),
+                  ),
+                ],
+              const SizedBox(height: 12),
+              if (budget.currentAmount > 0)
+                Text(
+                  "Progreso actual: \$${budget.currentAmount.toStringAsFixed(0)}",
+                  style: const TextStyle(color: Colors.green),
+                ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -740,25 +772,35 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
             child: const Text("Eliminar"),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Implement Edit Update Logic (Backend needs UpdateBudget endpoint)
-              // For now, user feedback #1 said "Option to edit OR delete".
-              // The backend `UpsertConfig` is for config, not budget items.
-              // `BudgetService` only has Create, Get, Delete.
-              // I need to add `UpdateBudget` to backend to support editing.
-              // Falling back to "Delete and Re-create" warning or just Delete for now?
-              // User specifically asked "editarla".
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "Edición no implementada aún en backend. Elimina y crea de nuevo.",
-                  ),
-                ),
-              );
+            onPressed: () async {
+               final name = nameController.text;
+               final amount = double.tryParse(amountController.text) ?? 0;
+               if (name.isEmpty || amount <= 0) return;
+
+               final updatedBudget = budget.copyWith(
+                 category: name,
+                 limitAmount: amount,
+                 type: selectedType,
+                 months: months,
+                 isRecurrent: selectedType == 'expense',
+                 // Recalculate monthly quota handled by backend usually or simple logic here?
+                 // Backend handles it based on isRecurrent and amount.
+               );
+
+               try {
+                 await ref.read(budgetRepositoryProvider).updateBudget(updatedBudget);
+                 ref.invalidate(budgetsListProvider(null));
+                 if (context.mounted) Navigator.pop(context);
+               } catch (e) {
+                 if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                 }
+               }
             },
             child: const Text("Actualizar"),
           ),
         ],
+      ),
       ),
     );
   }

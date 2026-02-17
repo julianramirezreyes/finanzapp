@@ -8,6 +8,9 @@ class BudgetConfig {
   final int pctExpense;
   final int pctSavings;
   final int pctInvestment;
+  final String splitMethod;
+  final double customSplitA;
+  final double customSplitB;
   final DateTime updatedAt;
 
   BudgetConfig({
@@ -20,6 +23,9 @@ class BudgetConfig {
     this.pctExpense = 50,
     this.pctSavings = 30,
     this.pctInvestment = 20,
+    this.splitMethod = 'equal',
+    this.customSplitA = 0.5,
+    this.customSplitB = 0.5,
     required this.updatedAt,
   });
 
@@ -34,6 +40,9 @@ class BudgetConfig {
       pctExpense: json['pct_expense'] ?? 50,
       pctSavings: json['pct_savings'] ?? 30,
       pctInvestment: json['pct_investment'] ?? 20,
+      splitMethod: json['split_method'] ?? 'equal',
+      customSplitA: (json['custom_split_a'] as num?)?.toDouble() ?? 0.5,
+      customSplitB: (json['custom_split_b'] as num?)?.toDouble() ?? 0.5,
       updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
     );
   }
@@ -48,6 +57,9 @@ class BudgetConfig {
       'pct_expense': pctExpense,
       'pct_savings': pctSavings,
       'pct_investment': pctInvestment,
+      'split_method': splitMethod,
+      'custom_split_a': customSplitA,
+      'custom_split_b': customSplitB,
       'updated_at': updatedAt.toUtc().toIso8601String(),
     };
     if (id.isNotEmpty) {
@@ -63,6 +75,9 @@ class BudgetConfig {
     int? pctExpense,
     int? pctSavings,
     int? pctInvestment,
+    String? splitMethod,
+    double? customSplitA,
+    double? customSplitB,
   }) {
     return BudgetConfig(
       id: id,
@@ -74,6 +89,9 @@ class BudgetConfig {
       pctExpense: pctExpense ?? this.pctExpense,
       pctSavings: pctSavings ?? this.pctSavings,
       pctInvestment: pctInvestment ?? this.pctInvestment,
+      splitMethod: splitMethod ?? this.splitMethod,
+      customSplitA: customSplitA ?? this.customSplitA,
+      customSplitB: customSplitB ?? this.customSplitB,
       updatedAt: DateTime.now(),
     );
   }

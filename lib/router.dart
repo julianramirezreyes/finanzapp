@@ -13,6 +13,8 @@ import 'package:finanzapp_v2/features/tax/presentation/tax_screen.dart';
 import 'package:finanzapp_v2/features/assets/presentation/assets_screen.dart';
 import 'package:finanzapp_v2/features/history/presentation/personal_history_screen.dart';
 import 'package:finanzapp_v2/features/automation/presentation/recurring_payments_screen.dart';
+import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
+import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,6 +52,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/accounts',
         builder: (context, state) => const AccountsScreen(),
+        routes: [
+          GoRoute(
+            path: ':id/vault',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              final extra = state.extra as Map<String, dynamic>?;
+              final name = extra?['name'] as String? ?? 'Bóveda';
+              return VaultScreen(accountId: id, accountName: name);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/transactions',
@@ -57,7 +70,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'add',
-            builder: (context, state) => const AddTransactionScreen(),
+            builder: (context, state) {
+              final tx = state.extra as Transaction?;
+              return AddTransactionScreen(transactionToEdit: tx);
+            },
           ),
         ],
       ),

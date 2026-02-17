@@ -751,7 +751,7 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                       targetAmount: budget.targetAmount,
                       targetDate: budget.targetDate,
                       currentAmount: budget.currentAmount,
-                      orderIndex: budget.orderIndex,
+                      displayOrder: budget.displayOrder,
                     );
 
                     await ref

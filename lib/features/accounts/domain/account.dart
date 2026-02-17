@@ -5,6 +5,7 @@ class Account {
   final double balance;
   final String currency;
   final bool includeInNetWorth;
+  final int displayOrder;
 
   Account({
     required this.id,
@@ -13,6 +14,7 @@ class Account {
     required this.balance,
     required this.currency,
     this.includeInNetWorth = true,
+    this.displayOrder = 0,
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class Account {
       balance: (json['balance'] as num).toDouble(),
       currency: json['currency'],
       includeInNetWorth: json['include_in_net_worth'] ?? true,
+      displayOrder: json['display_order'] ?? 0,
     );
   }
 }

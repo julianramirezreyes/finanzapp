@@ -3,6 +3,7 @@ import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -131,33 +132,54 @@ class AccountsScreen extends ConsumerWidget {
       body: accountsAsync.when(
         data: (accounts) => accounts.isEmpty
             ? const Center(child: Text("Aún no tienes cuentas."))
-            : ListView.builder(
+            : ReorderableListView.builder(
                 itemCount: accounts.length,
+                onReorder: (oldIndex, newIndex) {
+                  // Reorder logic
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = accounts.removeAt(oldIndex);
+                  accounts.insert(newIndex, item);
+
+                  // Update Backend
+                  ref.read(accountRepositoryProvider).reorderAccounts(accounts);
+                },
                 itemBuilder: (context, index) {
                   final acc = accounts[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
-                      child: Icon(
-                        Icons.account_balance_wallet,
-                        color: Theme.of(context).colorScheme.primary,
+                  return Container(
+                    key: ValueKey(acc.id),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        child: Icon(
+                          Icons.account_balance_wallet,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      acc.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(_translateAccountType(acc.type)),
-                    trailing: Text(
-                      '\$${acc.balance.toStringAsFixed(2)}', // Assuming USD for now or map symbol
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                      title: Text(
+                        acc.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      subtitle: Text(_translateAccountType(acc.type)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '\$${acc.balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.drag_handle, color: Colors.grey),
+                        ],
+                      ),
+                      onTap: () => _showEditDialog(context, ref, acc),
                     ),
-                    onTap: () => _showEditDialog(context, ref, acc),
                   );
                 },
               ),
@@ -221,6 +243,23 @@ class AccountsScreen extends ConsumerWidget {
           },
         ),
         actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.shield_outlined, size: 18),
+            label: const Text('Bóveda'),
+            style: TextButton.styleFrom(foregroundColor: Colors.blueGrey),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VaultScreen(
+                    accountId: account.id,
+                    accountName: account.name,
+                  ),
+                ),
+              );
+            },
+          ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar'),
@@ -239,6 +278,7 @@ class AccountsScreen extends ConsumerWidget {
                     balance: account.balance,
                     currency: account.currency,
                     includeInNetWorth: includeInNetWorth,
+                    displayOrder: account.displayOrder,
                   );
 
                   await ref
