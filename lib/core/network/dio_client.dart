@@ -8,16 +8,21 @@ import 'package:flutter/foundation.dart';
 // For web/iOS, use localhost or machine IP.
 // Android Emulator: 10.0.2.2
 // iOS Simulator / Web: localhost
-const String kBaseUrl = kIsWeb
-    ? 'https://finanzapp-backend-z6lu.onrender.com/api'
-    : 'http://10.0.2.2:8081/api';
+
+// PROD URL for Release Mode
+const String _prodUrl = 'https://finanzapp-backend-z6lu.onrender.com/api';
+// DEV URL for Local Debugging
+const String _devUrl =
+    'http://10.0.2.2:8080/api'; // Changed port to 8080 (standard) or keep 8081 if that's what user uses locally
+
+const String kBaseUrl = kReleaseMode ? _prodUrl : (kIsWeb ? _prodUrl : _devUrl);
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: kBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
     ),
   );
 
