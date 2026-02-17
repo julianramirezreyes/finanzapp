@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 // Android Emulator: 10.0.2.2
 // iOS Simulator / Web: localhost
 const String kBaseUrl = kIsWeb
-    ? 'http://localhost:8081/api'
+    ? 'https://finanzapp-backend-z6lu.onrender.com/api'
     : 'http://10.0.2.2:8081/api';
 
 final dioProvider = Provider<Dio>((ref) {

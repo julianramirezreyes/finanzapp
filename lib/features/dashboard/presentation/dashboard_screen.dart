@@ -225,40 +225,9 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
                       onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (ctx) => Wrap(
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.visibility),
-                                title: const Text('Ver Movimientos'),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  context.push('/accounts');
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.lock),
-                                title: const Text('Bóveda de Credenciales'),
-                                subtitle: const Text('Ver tarjetas y claves'),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  context.push(
-                                    '/accounts/${acc.id}/vault',
-                                    extra: {'name': acc.name},
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.edit),
-                                title: const Text('Editar Cuenta'),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  context.push('/accounts');
-                                },
-                              ),
-                            ],
-                          ),
+                        context.push(
+                          '/accounts/${acc.id}/vault',
+                          extra: {'name': acc.name},
                         );
                       },
                     ),

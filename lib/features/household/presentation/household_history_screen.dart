@@ -494,6 +494,13 @@ class _HouseholdHistoryScreenState
                     ? (incomeB / totalIncome) * 100
                     : 0;
 
+                double expPctA = totalExpenses > 0
+                    ? (expenseA / totalExpenses) * 100
+                    : 0;
+                double expPctB = totalExpenses > 0
+                    ? (expenseB / totalExpenses) * 100
+                    : 0;
+
                 return ListView(
                   children: [
                     // 1. Split Method Selector
@@ -554,12 +561,14 @@ class _HouseholdHistoryScreenState
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 _SummaryItem(
-                                  label: "Gastos Tú",
+                                  label:
+                                      "Gastos Tú (${expPctA.toStringAsFixed(0)}%)",
                                   value: expenseA,
                                   color: Colors.red.shade300,
                                 ),
                                 _SummaryItem(
-                                  label: "Gastos Pareja",
+                                  label:
+                                      "Gastos Pareja (${expPctB.toStringAsFixed(0)}%)",
                                   value: expenseB,
                                   color: Colors.red.shade300,
                                 ),
