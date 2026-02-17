@@ -1,0 +1,1 @@
+ /home/devian/projects/FinanzApp/frontend/finanzapp_v2/.dart_tool/flutter_build/81e0f26ac832faa65738b79664adcce4/dart_build_result.json:  /home/devian/flutter/bin/cache/dart-sdk/version /home/devian/projects/FinanzApp/frontend/finanzapp_v2/.dart_tool/package_config.json /home/devian/projects/FinanzApp/frontend/finanzapp_v2/pubspec.yaml
