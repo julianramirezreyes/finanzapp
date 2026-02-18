@@ -19,10 +19,7 @@ class HistoryRepository {
     try {
       final response = await _dio.get(
         '/history/personal',
-        queryParameters: {
-          'month': ?month,
-          'year': ?year,
-        },
+        queryParameters: {'month': month, 'year': year},
       );
       return PersonalHistorySummary.fromJson(response.data);
     } catch (e) {
