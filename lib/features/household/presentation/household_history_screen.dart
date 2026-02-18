@@ -248,59 +248,125 @@ class _HouseholdHistoryScreenState
   }
 
   void _showInvitationDialog(BuildContext context, String code) {
+    final emailController = TextEditingController();
+    bool isLoading = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Invitar a tu Pareja"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Comparte este código con tu pareja para que se una a tu hogar.",
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SelectableText(
-                code,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  letterSpacing: 1,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text("Invitar a tu Pareja"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Ingresa el correo de tu pareja para enviarle una invitación directa:",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13),
                 ),
-                textAlign: TextAlign.center,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: "Correo electrónico",
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            final email = emailController.text.trim();
+                            if (email.isEmpty) return;
+
+                            setDialogState(() => isLoading = true);
+                            try {
+                              await ref
+                                  .read(householdRepositoryProvider)
+                                  .inviteMember(widget.household.id, email);
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "¡Invitación enviada con éxito!",
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Error: $e")),
+                                );
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                setDialogState(() => isLoading = false);
+                              }
+                            }
+                          },
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text("Enviar Invitación"),
+                  ),
+                ),
+                const Divider(height: 32),
+                const Text(
+                  "O comparte este código manual:",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    code,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 1,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton.icon(
+                icon: const Icon(Icons.copy),
+                label: const Text("Copiar Código"),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Código copiado")),
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Tu pareja debe registrarse y seleccionar 'Unirse a Hogar' usando este código.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.copy),
-            label: const Text("Copiar"),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: code));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Código copiado al portapapeles")),
-              );
-              Navigator.pop(ctx);
-            },
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cerrar"),
-          ),
-        ],
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cerrar"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -47,4 +47,15 @@ class HouseholdRepository {
       throw Exception('Failed to remove member: $e');
     }
   }
+
+  Future<void> inviteMember(String householdId, String email) async {
+    try {
+      await _dio.post(
+        '/households/$householdId/invite',
+        data: {'email': email},
+      );
+    } catch (e) {
+      throw Exception('Failed to invite member: $e');
+    }
+  }
 }
