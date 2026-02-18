@@ -13,6 +13,7 @@ import 'package:finanzapp_v2/features/periods/data/settlement_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 final householdSnapshotProvider = FutureProvider.family
     .autoDispose<
@@ -246,6 +247,64 @@ class _HouseholdHistoryScreenState
     }
   }
 
+  void _showInvitationDialog(BuildContext context, String code) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Invitar a tu Pareja"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Comparte este código con tu pareja para que se una a tu hogar.",
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                code,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Tu pareja debe registrarse y seleccionar 'Unirse a Hogar' usando este código.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy),
+            label: const Text("Copiar"),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: code));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Código copiado al portapapeles")),
+              );
+              Navigator.pop(ctx);
+            },
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cerrar"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMembersDialog() {
     showDialog(
       context: context,
@@ -356,13 +415,7 @@ class _HouseholdHistoryScreenState
                       subtitle: const Text("Cupo disponible"),
                       leading: const Icon(Icons.person_add),
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Usa el menú principal para invitar.",
-                            ),
-                          ),
-                        );
+                        _showInvitationDialog(context, widget.household.id);
                       },
                     ),
                 ],
