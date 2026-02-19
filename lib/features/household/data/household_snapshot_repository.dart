@@ -20,7 +20,6 @@ class HouseholdSnapshotRepository {
         '/households/$householdId/sync',
         data: {'year': year, 'month': month},
       );
-      print('Sync Output: ${response.data} Type: ${response.data.runtimeType}');
       return response.data['id'];
     } catch (e) {
       throw Exception('Failed to sync snapshot: $e');
@@ -41,9 +40,6 @@ class HouseholdSnapshotRepository {
         ),
       );
 
-      print('Snapshot Response Status: ${response.statusCode}');
-      print('Snapshot Response Data Type: ${response.data.runtimeType}');
-
       if (response.statusCode == 404) {
         throw Exception('Snapshot not found (404)');
       }
@@ -59,7 +55,6 @@ class HouseholdSnapshotRepository {
       // FALLBACK: If status was 200 but body is String (likely due to missing Content-Type header),
       // try to parse it as JSON manually.
       if (data is String) {
-        print('Snapshot Data improperly returned as String: $data');
         if (data.contains('404') || data.contains('Not Found')) {
           throw Exception('Snapshot not found (404-in-body)');
         }
@@ -75,7 +70,7 @@ class HouseholdSnapshotRepository {
             };
           }
         } catch (e) {
-          print('Failed to parse fallback JSON: $e');
+          throw Exception('Failed to parse snapshot JSON: $e');
         }
 
         throw Exception('Invalid data format: Expected Map, got String: $data');

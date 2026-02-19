@@ -25,7 +25,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Topes Declaración Renta'),
+        title: const Text('Declaración de Renta'),
         actions: [
           DropdownButton<int>(
             value: _year,
@@ -81,7 +81,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text("Año Gravable $_year"),
+                      Text("Año gravable $_year"),
                       const SizedBox(height: 8),
                       Text(
                         "Valor UVT: ${currencyFormat.format(status.uvtValue)}",

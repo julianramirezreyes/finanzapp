@@ -96,6 +96,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        "Gastos Personal",
+                        summary.expensePersonal,
+                        Colors.redAccent,
+                        Icons.person,
+                        currency,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSummaryCard(
+                        "Gastos Hogar",
+                        summary.expenseHousehold,
+                        Colors.blue,
+                        Icons.home,
+                        currency,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildSummaryCard(
+                  "Movimientos",
+                  summary.movements,
+                  Colors.indigo,
+                  Icons.swap_horiz,
+                  currency,
+                ),
+                const SizedBox(height: 12),
                 _buildBalanceCard(summary.balance, currency),
 
                 const SizedBox(height: 24),
@@ -261,17 +293,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         await ref.read(transactionRepositoryProvider).deleteTransaction(id);
         // Refresh history
         ref.invalidate(personalHistoryProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Transacción eliminada")),
-          );
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Transacción eliminada")),
+        );
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Error: $e")));
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }

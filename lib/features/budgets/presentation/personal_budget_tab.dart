@@ -650,6 +650,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                   ref.invalidate(budgetsListProvider(null));
                   if (context.mounted) Navigator.pop(ctx);
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -792,9 +793,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                  ref.invalidate(budgetsListProvider(null));
                  if (context.mounted) Navigator.pop(context);
                } catch (e) {
-                 if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-                 }
+                 if (!context.mounted) return;
+                 ScaffoldMessenger.of(context)
+                     .showSnackBar(SnackBar(content: Text("Error: $e")));
                }
             },
             child: const Text("Actualizar"),

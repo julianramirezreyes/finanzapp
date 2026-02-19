@@ -6,10 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/presentation/responsive_layout.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// State for customizing quick actions
-final quickActionsStateProvider = StateProvider<List<String>>((ref) {
-  return [
+class _QuickActionsNotifier extends StateNotifier<AsyncValue<List<String>>> {
+  _QuickActionsNotifier() : super(const AsyncValue.loading()) {
+    _loadFromStorage();
+  }
+
+  static const _storageKey = 'quick_actions_enabled';
+
+  static const List<String> _defaultActions = [
     'Historial',
     'Metas',
     'Hogar',
@@ -17,6 +23,33 @@ final quickActionsStateProvider = StateProvider<List<String>>((ref) {
     'Activos',
     'Declaración',
   ];
+
+  Future<void> _loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_storageKey);
+    state = AsyncValue.data(
+      (saved != null && saved.isNotEmpty)
+          ? List<String>.from(saved)
+          : List<String>.from(_defaultActions),
+    );
+  }
+
+  void setActions(List<String> actions) {
+    state = AsyncValue.data(List<String>.from(actions));
+  }
+
+  Future<void> persistActions(List<String> actions) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_storageKey, List<String>.from(actions));
+  }
+}
+
+// State for customizing quick actions with persistence
+final quickActionsStateProvider =
+    StateNotifierProvider<_QuickActionsNotifier, AsyncValue<List<String>>>((
+  ref,
+) {
+  return _QuickActionsNotifier();
 });
 
 class DashboardScreen extends ConsumerWidget {
@@ -25,7 +58,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(dashboardProvider);
-    final enabledActions = ref.watch(quickActionsStateProvider);
+    final quickActionsAsync = ref.watch(quickActionsStateProvider);
 
     // Startup Check for Pending Payments
     ref.listen(pendingPaymentsProvider, (previous, next) {
@@ -101,86 +134,103 @@ class DashboardScreen extends ConsumerWidget {
 
                 const SizedBox(height: 12),
 
-                if (enabledActions.isEmpty)
-                  Center(
-                    child: Text(
-                      "No hay accesos visibles.",
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final crossAxisCount = constraints.maxWidth > 400 ? 4 : 3;
-
-                      // Define all possible actions
-                      final allActions = [
-                        _QuickActionItem(
-                          Icons.history,
-                          'Historial',
-                          Colors.blueGrey,
-                          '/transactions',
+                quickActionsAsync.when(
+                  data: (enabledActions) {
+                    if (enabledActions.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "No hay accesos visibles.",
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
-                        _QuickActionItem(
-                          Icons.savings,
-                          'Metas',
-                          Colors.purple,
-                          '/budgets',
-                        ),
-                        _QuickActionItem(
-                          Icons.people,
-                          'Hogar',
-                          Colors.blue,
-                          '/household',
-                        ),
-                        _QuickActionItem(
-                          Icons.autorenew,
-                          'Automático',
-                          Colors.teal,
-                          '/automation',
-                        ),
-                        _QuickActionItem(
-                          Icons.account_balance,
-                          'Activos',
-                          Colors.indigo,
-                          '/assets',
-                        ),
-                        _QuickActionItem(
-                          Icons.assignment,
-                          'Declaración',
-                          Colors.orange,
-                          '/tax',
-                        ),
-                      ];
-
-                      // Filter visible ones
-                      final visibleActions = allActions
-                          .where((a) => enabledActions.contains(a.label))
-                          .toList();
-
-                      return GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        children: visibleActions
-                            .map(
-                              (action) => _buildQuickAction(
-                                context,
-                                action.icon,
-                                action.label,
-                                action.color.withOpacity(
-                                  0.1,
-                                ), // Changed withValues to withOpacity
-                                action.color,
-                                () => context.push(action.route),
-                              ),
-                            )
-                            .toList(),
                       );
-                    },
+                    }
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final crossAxisCount =
+                            constraints.maxWidth > 400 ? 4 : 3;
+
+                        // Define all possible actions
+                        final allActions = [
+                          _QuickActionItem(
+                            Icons.history,
+                            'Historial',
+                            Colors.blueGrey,
+                            '/transactions',
+                          ),
+                          _QuickActionItem(
+                            Icons.savings,
+                            'Metas',
+                            Colors.purple,
+                            '/budgets',
+                          ),
+                          _QuickActionItem(
+                            Icons.people,
+                            'Hogar',
+                            Colors.blue,
+                            '/household',
+                          ),
+                          _QuickActionItem(
+                            Icons.autorenew,
+                            'Automático',
+                            Colors.teal,
+                            '/automation',
+                          ),
+                          _QuickActionItem(
+                            Icons.account_balance,
+                            'Activos',
+                            Colors.indigo,
+                            '/assets',
+                          ),
+                          _QuickActionItem(
+                            Icons.assignment,
+                            'Declaración',
+                            Colors.orange,
+                            '/tax',
+                          ),
+                        ];
+
+                        // Filter visible ones
+                        final visibleActions = allActions
+                            .where((a) => enabledActions.contains(a.label))
+                            .toList();
+
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          children: visibleActions
+                              .map(
+                                (action) => _buildQuickAction(
+                                  context,
+                                  action.icon,
+                                  action.label,
+                                  action.color.withValues(alpha: 0.1),
+                                  action.color,
+                                  () => context.push(action.route),
+                                ),
+                              )
+                              .toList(),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Error cargando accesos: $e",
+                      style: TextStyle(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -204,9 +254,7 @@ class DashboardScreen extends ConsumerWidget {
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Theme.of(context).colorScheme.primary
-                            .withOpacity(
-                              0.1,
-                            ), // Changed withValues to withOpacity
+                            .withValues(alpha: 0.1),
                         child: Icon(
                           Icons.account_balance,
                           color: Theme.of(context).colorScheme.primary,
@@ -395,8 +443,9 @@ class DashboardScreen extends ConsumerWidget {
 
   void _showQuickActionsConfig(BuildContext context, WidgetRef ref) {
     final currentActions = List<String>.from(
-      ref.read(quickActionsStateProvider),
-    ); // Create a mutable copy
+      ref.read(quickActionsStateProvider).value ??
+          _QuickActionsNotifier._defaultActions,
+    );
     final allLabels = [
       'Historial',
       'Metas',
@@ -408,6 +457,7 @@ class DashboardScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -437,10 +487,14 @@ class DashboardScreen extends ConsumerWidget {
                           );
 
                           // Update provider
-                          ref.read(quickActionsStateProvider.notifier).state = [
-                            ...currentActions,
-                          ];
+                          ref
+                              .read(quickActionsStateProvider.notifier)
+                              .setActions(currentActions);
                         });
+
+                        ref
+                            .read(quickActionsStateProvider.notifier)
+                            .persistActions(currentActions);
                       },
                     );
                   }).toList(),
@@ -448,7 +502,12 @@ class DashboardScreen extends ConsumerWidget {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    await ref
+                        .read(quickActionsStateProvider.notifier)
+                        .persistActions(currentActions);
+                    if (context.mounted) Navigator.pop(context);
+                  },
                   child: const Text("Listo"),
                 ),
               ],
@@ -489,11 +548,9 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'BALANCE TOTAL',
+              'SALDO TOTAL',
               style: TextStyle(
-                color: Colors.white.withOpacity(
-                  0.8,
-                ), // Changed withValues to withOpacity
+                color: Colors.white.withValues(alpha: 0.8),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -521,22 +578,49 @@ class DashboardScreen extends ConsumerWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSummaryItem(
-              context,
-              'Ingresos',
-              data.monthlyIncome,
-              Colors.green,
-              format,
+            Text(
+              'Resumen del mes',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
-            _buildSummaryItem(
-              context,
-              'Gastos',
-              data.monthlyExpense,
-              Colors.red,
-              format,
+            const SizedBox(height: 4),
+            Text(
+              DateFormat.yMMMM('es_ES').format(DateTime.now()).toUpperCase(),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildSummaryItem(
+                  context,
+                  'Ingresos',
+                  data.monthlyIncome,
+                  Colors.green,
+                  format,
+                ),
+                _buildSummaryItem(
+                  context,
+                  'Gastos totales',
+                  data.monthlyExpense,
+                  Colors.red,
+                  format,
+                ),
+                _buildSummaryItem(
+                  context,
+                  'Balance del mes',
+                  data.monthlyBalance,
+                  data.monthlyBalance >= 0 ? Colors.blue : Colors.redAccent,
+                  format,
+                ),
+              ],
             ),
           ],
         ),

@@ -32,7 +32,10 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
   // 2. Fetch Transactions for Current Month
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
-  final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of month
+  // Backend filtra con "t.date <= end_date". Si enviamos el último día a las 00:00,
+  // se excluyen transacciones del resto de ese día.
+  final endOfMonth = DateTime(now.year, now.month + 1, 1)
+      .subtract(const Duration(microseconds: 1));
 
   final transactions = await transactionRepo.getTransactions(
     startDate: startOfMonth,

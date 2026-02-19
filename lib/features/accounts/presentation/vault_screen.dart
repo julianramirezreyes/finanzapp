@@ -102,27 +102,26 @@ class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<bool>(
-                    title: const Text("Tarjeta"),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment<bool>(
                     value: true,
-                    groupValue: _isCard,
-                    onChanged: (v) => setState(() => _isCard = v!),
-                    contentPadding: EdgeInsets.zero,
+                    label: Text("Tarjeta"),
+                    icon: Icon(Icons.credit_card),
                   ),
-                ),
-                Expanded(
-                  child: RadioListTile<bool>(
-                    title: const Text("Cuenta"),
+                  ButtonSegment<bool>(
                     value: false,
-                    groupValue: _isCard,
-                    onChanged: (v) => setState(() => _isCard = v!),
-                    contentPadding: EdgeInsets.zero,
+                    label: Text("Cuenta"),
+                    icon: Icon(Icons.account_balance),
                   ),
-                ),
-              ],
+                ],
+                selected: {_isCard},
+                onSelectionChanged: (value) {
+                  setState(() => _isCard = value.first);
+                },
+              ),
             ),
             const Divider(),
             if (_isCard) ...[

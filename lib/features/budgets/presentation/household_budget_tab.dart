@@ -4,6 +4,7 @@ import 'package:finanzapp_v2/features/budgets/data/budget_repository.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget_config.dart';
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
+import 'package:finanzapp_v2/features/auth/presentation/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
@@ -35,19 +36,36 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     super.dispose();
   }
 
-  void _initializeValues(BudgetConfig config) {
+  void _initializeValues({
+    required BudgetConfig config,
+    required String currentUserId,
+    required String householdUserAId,
+  }) {
     if (_isInit) return;
-    _incomeAController.text = config.incomeA.toStringAsFixed(0);
-    _incomeBController.text = config.incomeB.toStringAsFixed(0);
+
+    final isUserA = currentUserId == householdUserAId;
+    final myIncome = isUserA ? config.incomeA : config.incomeB;
+    final partnerIncome = isUserA ? config.incomeB : config.incomeA;
+
+    _incomeAController.text = myIncome.toStringAsFixed(0);
+    _incomeBController.text = partnerIncome.toStringAsFixed(0);
     _pctExpense = config.pctExpense.toDouble();
     _pctSavings = config.pctSavings.toDouble();
     _pctInvestment = config.pctInvestment.toDouble();
     _isInit = true;
   }
 
-  Future<void> _saveConfig(String householdId) async {
-    final incomeA = double.tryParse(_incomeAController.text) ?? 0;
-    final incomeB = double.tryParse(_incomeBController.text) ?? 0;
+  Future<void> _saveConfig({
+    required String householdId,
+    required BudgetConfig existingConfig,
+    required String currentUserId,
+    required String householdUserAId,
+  }) async {
+    final myIncome = double.tryParse(_incomeAController.text) ?? 0;
+    final isUserA = currentUserId == householdUserAId;
+
+    final incomeA = isUserA ? myIncome : existingConfig.incomeA;
+    final incomeB = isUserA ? existingConfig.incomeB : myIncome;
 
     final newConfig = BudgetConfig(
       id: '', // Service handles ID
@@ -92,11 +110,16 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
   @override
   Widget build(BuildContext context) {
     final householdAsync = ref.watch(householdProvider);
+    final currentUser = ref.watch(userProvider);
 
     return householdAsync.when(
       data: (household) {
         if (household == null) {
           return const Center(child: Text("No tienes un hogar activo."));
+        }
+
+        if (currentUser == null) {
+          return const Center(child: CircularProgressIndicator());
         }
 
         final configAsync = ref.watch(
@@ -105,7 +128,19 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
 
         return configAsync.when(
           data: (config) {
-            _initializeValues(config);
+            _initializeValues(
+              config: config,
+              currentUserId: currentUser.id,
+              householdUserAId: household.userAId,
+            );
+
+            final isUserA = currentUser.id == household.userAId;
+            final hasPartner = household.userBId != null;
+            final partnerLabel = hasPartner
+                ? (isUserA
+                    ? (household.userBEmail ?? 'Ingreso de tu pareja')
+                    : household.userAEmail)
+                : 'Sin pareja';
 
             final totalPct = _pctExpense + _pctSavings + _pctInvestment;
             final isInvalid = totalPct != 100;
@@ -143,12 +178,14 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                         child: TextField(
                           controller: _incomeBController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
+                          readOnly: true,
+                          enabled: hasPartner,
+                          decoration: InputDecoration(
                             labelText: "Ingreso de tu pareja",
-                            border: OutlineInputBorder(),
+                            helperText: partnerLabel,
+                            border: const OutlineInputBorder(),
                             prefixText: "\$",
                           ),
-                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                     ],
@@ -215,7 +252,12 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     child: ElevatedButton(
                       onPressed: isInvalid
                           ? null
-                          : () => _saveConfig(household.id),
+                          : () => _saveConfig(
+                                householdId: household.id,
+                                existingConfig: config,
+                                currentUserId: currentUser.id,
+                                householdUserAId: household.userAId,
+                              ),
                       child: const Text("Guardar Configuración"),
                     ),
                   ),
@@ -603,8 +645,10 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                           isRecurrent: isRecurrent,
                         );
                     ref.invalidate(budgetsListProvider(householdId));
-                    if (mounted) Navigator.pop(context);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
                   } catch (e) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -758,8 +802,10 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                         .read(budgetRepositoryProvider)
                         .updateBudget(updatedBudget, householdId: householdId);
                     ref.invalidate(budgetsListProvider(householdId));
-                    if (mounted) Navigator.pop(context);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
                   } catch (e) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text("Error: $e")));
