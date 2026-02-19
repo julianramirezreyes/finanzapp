@@ -120,15 +120,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildSummaryCard(
-                  "Movimientos",
-                  summary.movements,
-                  Colors.indigo,
-                  Icons.swap_horiz,
-                  currency,
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        "Movimientos",
+                        summary.movements,
+                        Colors.indigo,
+                        Icons.swap_horiz,
+                        currency,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildBalanceCard(summary.balance, currency),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _buildBalanceCard(summary.balance, currency),
 
                 const SizedBox(height: 24),
                 Text(

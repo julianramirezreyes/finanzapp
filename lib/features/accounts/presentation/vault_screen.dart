@@ -3,8 +3,9 @@ import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class VaultScreen extends ConsumerWidget {
+class VaultScreen extends ConsumerStatefulWidget {
   final String accountId;
   final String accountName;
 
@@ -14,19 +15,68 @@ class VaultScreen extends ConsumerWidget {
     required this.accountName,
   });
 
-  void _showAddItemDialog(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<VaultScreen> createState() => _VaultScreenState();
+}
+
+class _VaultScreenState extends ConsumerState<VaultScreen> {
+  List<String>? _savedOrder;
+
+  String get _orderKey => 'vault_order_${widget.accountId}';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrder();
+  }
+
+  Future<void> _loadOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_orderKey);
+    if (!mounted) return;
+    setState(() {
+      _savedOrder = ids;
+    });
+  }
+
+  Future<void> _persistOrder(List<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_orderKey, ids);
+    if (!mounted) return;
+    setState(() {
+      _savedOrder = ids;
+    });
+  }
+
+  void _showAddItemDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => _VaultItemDialog(accountId: accountId),
+      builder: (context) => _VaultItemDialog(accountId: widget.accountId),
     );
   }
 
+  List<dynamic> _applySavedOrder(List<dynamic> items) {
+    final order = _savedOrder;
+    if (order == null || order.isEmpty) return items;
+
+    final byId = <String, dynamic>{
+      for (final item in items) item.id as String: item,
+    };
+    final ordered = <dynamic>[];
+    for (final id in order) {
+      final item = byId.remove(id);
+      if (item != null) ordered.add(item);
+    }
+    ordered.addAll(byId.values);
+    return ordered;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final itemsAsync = ref.watch(vaultItemsProvider(accountId));
+  Widget build(BuildContext context) {
+    final itemsAsync = ref.watch(vaultItemsProvider(widget.accountId));
 
     return Scaffold(
-      appBar: AppBar(title: Text('Bóveda: $accountName')),
+      appBar: AppBar(title: Text('Bóveda: ${widget.accountName}')),
       body: itemsAsync.when(
         data: (items) {
           if (items.isEmpty) {
@@ -39,7 +89,7 @@ class VaultScreen extends ConsumerWidget {
                   const Text("La bóveda está vacía."),
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: () => _showAddItemDialog(context, ref),
+                    onPressed: () => _showAddItemDialog(context),
                     icon: const Icon(Icons.add),
                     label: const Text("Agregar Ítem"),
                   ),
@@ -47,15 +97,28 @@ class VaultScreen extends ConsumerWidget {
               ),
             );
           }
-          return ListView.builder(
+
+          final orderedItems = _applySavedOrder(items);
+
+          return ReorderableListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: items.length,
+            itemCount: orderedItems.length,
+            onReorder: (oldIndex, newIndex) async {
+              if (newIndex > oldIndex) newIndex -= 1;
+              final updated = List<dynamic>.from(orderedItems);
+              final moved = updated.removeAt(oldIndex);
+              updated.insert(newIndex, moved);
+              await _persistOrder(
+                updated.map((e) => e.id as String).toList(),
+              );
+              ref.invalidate(vaultItemsProvider(widget.accountId));
+            },
             itemBuilder: (context, index) {
-              final item = items[index];
+              final item = orderedItems[index];
               return _VaultItemCard(
                 key: ValueKey(item.id),
                 item: item,
-                accountId: accountId,
+                accountId: widget.accountId,
               );
             },
           );
@@ -64,7 +127,7 @@ class VaultScreen extends ConsumerWidget {
         error: (e, s) => Center(child: Text("Error: $e")),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddItemDialog(context, ref),
+        onPressed: () => _showAddItemDialog(context),
         child: const Icon(Icons.add),
       ),
     );

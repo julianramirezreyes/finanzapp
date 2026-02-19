@@ -596,31 +596,28 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryItem(
-                  context,
-                  'Ingresos',
-                  data.monthlyIncome,
-                  Colors.green,
-                  format,
-                ),
-                _buildSummaryItem(
-                  context,
-                  'Gastos totales',
-                  data.monthlyExpense,
-                  Colors.red,
-                  format,
-                ),
-                _buildSummaryItem(
-                  context,
-                  'Balance del mes',
-                  data.monthlyBalance,
-                  data.monthlyBalance >= 0 ? Colors.blue : Colors.redAccent,
-                  format,
-                ),
-              ],
+            _buildMonthlySummaryRow(
+              context,
+              label: 'Ingresos',
+              amount: data.monthlyIncome,
+              color: Colors.green,
+              format: format,
+            ),
+            const SizedBox(height: 8),
+            _buildMonthlySummaryRow(
+              context,
+              label: 'Gastos totales',
+              amount: data.monthlyExpense,
+              color: Colors.red,
+              format: format,
+            ),
+            const SizedBox(height: 8),
+            _buildMonthlySummaryRow(
+              context,
+              label: 'Balance del mes',
+              amount: data.monthlyBalance,
+              color: data.monthlyBalance >= 0 ? Colors.blue : Colors.redAccent,
+              format: format,
             ),
           ],
         ),
@@ -628,23 +625,32 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryItem(
-    BuildContext context,
-    String label,
-    double amount,
-    Color color,
-    NumberFormat format,
-  ) {
-    return Column(
+  Widget _buildMonthlySummaryRow(
+    BuildContext context, {
+    required String label,
+    required double amount,
+    required Color color,
+    required NumberFormat format,
+  }) {
+    return Row(
       children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-        const SizedBox(height: 4),
-        Text(
-          format.format(amount),
-          style: TextStyle(
-            color: color,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.grey[700], fontSize: 14),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            format.format(amount),
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
