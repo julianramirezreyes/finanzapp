@@ -1,6 +1,9 @@
 class RecurringPayment {
   final String id;
   final String accountId;
+  final String context; // personal, household
+  final String? householdId;
+  final String? budgetId;
   final String category;
   final String description;
   final double amount;
@@ -13,6 +16,9 @@ class RecurringPayment {
   RecurringPayment({
     required this.id,
     required this.accountId,
+    required this.context,
+    this.householdId,
+    this.budgetId,
     required this.category,
     required this.description,
     required this.amount,
@@ -27,6 +33,9 @@ class RecurringPayment {
     return RecurringPayment(
       id: json['id'],
       accountId: json['account_id'],
+      context: json['context'] ?? 'personal',
+      householdId: json['household_id'],
+      budgetId: json['budget_id'],
       category: json['category'],
       description: json['description'] ?? '',
       amount: (json['amount'] as num).toDouble(),
@@ -41,6 +50,9 @@ class RecurringPayment {
   Map<String, dynamic> toJson() {
     return {
       'account_id': accountId,
+      'context': context,
+      'household_id': householdId,
+      'budget_id': budgetId,
       'category': category,
       'description': description,
       'amount': amount,

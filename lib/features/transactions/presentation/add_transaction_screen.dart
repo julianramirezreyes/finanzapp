@@ -58,7 +58,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         _selectionValue = "budget:${t.budgetId}";
       } else {
         // Try to match static category
-        // TODO: This might fail if the category is not in the static list,
+        // NOTE: This might fail if the category is not in the static list,
         // but the build method defaults to standard ones.
         // We might need to strictly match logic or allow free text if we supported it.
         // For now, assume it matches one of our static keys or set as "static:General"

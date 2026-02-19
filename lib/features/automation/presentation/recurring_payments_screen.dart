@@ -2,6 +2,9 @@ import 'package:finanzapp_v2/features/automation/data/automation_repository.dart
 import 'package:finanzapp_v2/features/automation/domain/recurring_payment.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
+import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
+import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
+import 'package:finanzapp_v2/features/household/data/household_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -243,7 +246,11 @@ class RecurringPaymentsScreen extends ConsumerWidget {
     final isEditing = existing != null;
 
     String accountId = existing?.accountId ?? accounts.first.id;
+    String contextValue = existing?.context ?? 'personal';
+    String? householdId = existing?.householdId;
+    String? budgetId = existing?.budgetId;
     String category = existing?.category ?? 'General';
+    String? selectionValue = budgetId != null ? 'budget:$budgetId' : 'static:$category';
     String description = existing?.description ?? '';
     String frequency = existing?.frequency ?? 'monthly';
     bool isAutoConfirm = existing?.isAutoConfirm ?? false;
@@ -266,6 +273,31 @@ class RecurringPaymentsScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
+                    initialValue: contextValue,
+                    decoration: const InputDecoration(labelText: 'Contexto'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'personal',
+                        child: Text('Personal'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'household',
+                        child: Text('Hogar'),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() {
+                        contextValue = v;
+                        // reset selection to force user to re-pick from correct budget list
+                        selectionValue = null;
+                        budgetId = null;
+                        category = 'General';
+                        householdId = null;
+                      });
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
                     initialValue: accountId,
                     decoration: const InputDecoration(labelText: 'Cuenta'),
                     items: accounts
@@ -279,10 +311,79 @@ class RecurringPaymentsScreen extends ConsumerWidget {
                     onChanged: (v) => setState(() => accountId = v!),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    initialValue: category,
-                    decoration: const InputDecoration(labelText: 'Categoría'),
-                    onChanged: (v) => category = v,
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final householdAsync = ref.watch(householdProvider);
+                      final String? currentHouseholdId = householdAsync.valueOrNull?.id;
+                      final String? targetHouseholdId =
+                          contextValue == 'household' ? currentHouseholdId : null;
+
+                      final budgetsAsync =
+                          ref.watch(budgetsListProvider(targetHouseholdId));
+
+                      return budgetsAsync.when(
+                        data: (budgets) {
+                          final items = <DropdownMenuItem<String>>[];
+
+                          for (final Budget b in budgets) {
+                            items.add(
+                              DropdownMenuItem(
+                                value: 'budget:${b.id}',
+                                child: Text(
+                                  '🎯 ${b.category} (${b.isRecurrent ? 'Fijo' : 'Meta'})',
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (items.isEmpty) {
+                            items.add(
+                              const DropdownMenuItem(
+                                value: 'static:General',
+                                child: Text('General'),
+                              ),
+                            );
+                          }
+
+                          if (selectionValue == null ||
+                              !items.any((i) => i.value == selectionValue)) {
+                            selectionValue = items.first.value;
+                          }
+
+                          // keep derived values in sync
+                          if (selectionValue != null &&
+                              selectionValue!.startsWith('budget:')) {
+                            budgetId = selectionValue!.split(':')[1];
+                            final Budget selected = budgets.firstWhere(
+                              (b) => b.id == budgetId,
+                              orElse: () => budgets.first,
+                            );
+                            category = selected.category;
+                          } else {
+                            budgetId = null;
+                            category = selectionValue!.split(':')[1];
+                          }
+
+                          if (contextValue == 'household') {
+                            householdId = currentHouseholdId;
+                          } else {
+                            householdId = null;
+                          }
+
+                          return DropdownButtonFormField<String>(
+                            key: ValueKey('budget_$contextValue'),
+                            initialValue: selectionValue,
+                            decoration: const InputDecoration(
+                              labelText: 'Categoría / Meta',
+                            ),
+                            items: items,
+                            onChanged: (v) => setState(() => selectionValue = v),
+                          );
+                        },
+                        loading: () => const LinearProgressIndicator(),
+                        error: (e, s) => Text('Error cargando metas: $e'),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -382,9 +483,16 @@ class RecurringPaymentsScreen extends ConsumerWidget {
               if (!formKey.currentState!.validate()) return;
 
               try {
+                if (contextValue == 'household' && householdId == null) {
+                  throw Exception('Debes tener un hogar configurado para usar contexto Hogar');
+                }
+
                 final payload = RecurringPayment(
                   id: existing?.id ?? '',
                   accountId: accountId,
+                  context: contextValue,
+                  householdId: householdId,
+                  budgetId: budgetId,
                   category: category,
                   description: description,
                   amount: amount,
