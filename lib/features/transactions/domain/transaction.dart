@@ -13,6 +13,7 @@ class Transaction {
   final String? destinationAccountId;
   final String userId;
   final bool excludeFromBalance;
+  final bool paidWithCreditCard;
 
   Transaction({
     required this.id,
@@ -28,6 +29,7 @@ class Transaction {
     this.destinationAccountId,
     required this.userId,
     this.excludeFromBalance = false,
+    this.paidWithCreditCard = false,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class Transaction {
           json['user_id'] ??
           '', // Handle potential missing user_id if logic allows, usually required
       excludeFromBalance: json['exclude_from_balance'] ?? false,
+      paidWithCreditCard: json['paid_with_credit_card'] ?? false,
     );
   }
 
@@ -65,6 +68,7 @@ class Transaction {
       'destination_account_id': destinationAccountId,
       'user_id': userId,
       'exclude_from_balance': excludeFromBalance,
+      'paid_with_credit_card': paidWithCreditCard,
     };
   }
 
@@ -82,6 +86,7 @@ class Transaction {
     String? destinationAccountId,
     String? userId,
     bool? excludeFromBalance,
+    bool? paidWithCreditCard,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -97,6 +102,7 @@ class Transaction {
       destinationAccountId: destinationAccountId ?? this.destinationAccountId,
       userId: userId ?? this.userId,
       excludeFromBalance: excludeFromBalance ?? this.excludeFromBalance,
+      paidWithCreditCard: paidWithCreditCard ?? this.paidWithCreditCard,
     );
   }
 }

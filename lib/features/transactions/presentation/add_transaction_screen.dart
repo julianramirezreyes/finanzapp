@@ -32,6 +32,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String? _accountId;
   String? _destinationAccountId; // For transfers
   bool _excludeFromBalance = false;
+  bool _paidWithCreditCard = false;
 
   // Selection Logic for Category/Budget
   // Value format: "static:Name" or "budget:UUID"
@@ -50,6 +51,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _accountId = t.accountId;
       _destinationAccountId = t.destinationAccountId;
       _excludeFromBalance = t.excludeFromBalance;
+      _paidWithCreditCard = t.paidWithCreditCard;
 
       // Pre-select category/budget
       if (t.budgetId != null) {
@@ -293,13 +295,35 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       'Regístralo en el historial pero no descuentes dinero',
                     ),
                     value: _excludeFromBalance,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _excludeFromBalance = value;
-                      });
-                    },
+                    onChanged: _paidWithCreditCard
+                        ? null
+                        : (bool value) {
+                            setState(() {
+                              _excludeFromBalance = value;
+                            });
+                          },
                     secondary: const Icon(Icons.money_off),
                   ),
+
+                  if (_type == 'expense') ...[
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Pagado con Tarjeta de Crédito'),
+                      subtitle: const Text(
+                        'No descuenta saldo del banco y no cuenta en gastos mensuales',
+                      ),
+                      value: _paidWithCreditCard,
+                      onChanged: (bool value) {
+                        setState(() {
+                          _paidWithCreditCard = value;
+                          if (_paidWithCreditCard) {
+                            _excludeFromBalance = true;
+                          }
+                        });
+                      },
+                      secondary: const Icon(Icons.credit_card),
+                    ),
+                  ],
 
                   const SizedBox(height: 32),
 
@@ -557,6 +581,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             destinationAccountId: _destinationAccountId,
             userId: t.userId, // Maintain user ID
             excludeFromBalance: _excludeFromBalance,
+            paidWithCreditCard: _type == 'expense' ? _paidWithCreditCard : false,
           );
 
           await ref
@@ -583,6 +608,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 budgetId: finalBudgetId,
                 destinationAccountId: _destinationAccountId,
                 excludeFromBalance: _excludeFromBalance,
+                paidWithCreditCard: _type == 'expense' ? _paidWithCreditCard : false,
               );
           if (mounted) {
             ScaffoldMessenger.of(

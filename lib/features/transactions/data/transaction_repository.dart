@@ -61,6 +61,7 @@ class TransactionRepository {
     String? budgetId,
     String? destinationAccountId,
     bool excludeFromBalance = false,
+    bool paidWithCreditCard = false,
   }) async {
     try {
       final payload = {
@@ -72,6 +73,7 @@ class TransactionRepository {
         'date': date.toUtc().toIso8601String(),
         'context': context,
         'exclude_from_balance': excludeFromBalance,
+        'paid_with_credit_card': paidWithCreditCard,
       };
 
       if (householdId != null) {

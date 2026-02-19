@@ -13,6 +13,12 @@ final pendingPaymentsProvider = FutureProvider<List<RecurringPayment>>((
   return ref.watch(automationRepositoryProvider).getPendingPayments();
 });
 
+final allRecurringPaymentsProvider = FutureProvider<List<RecurringPayment>>((
+  ref,
+) async {
+  return ref.watch(automationRepositoryProvider).getAllPayments();
+});
+
 class AutomationRepository {
   final Dio _dio;
 
@@ -25,6 +31,16 @@ class AutomationRepository {
       return list.map((e) => RecurringPayment.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to fetch pending payments: $e');
+    }
+  }
+
+  Future<List<RecurringPayment>> getAllPayments() async {
+    try {
+      final response = await _dio.get('/automation/payments');
+      final List<dynamic> list = response.data;
+      return list.map((e) => RecurringPayment.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch payments: $e');
     }
   }
 
@@ -45,6 +61,26 @@ class AutomationRepository {
       return RecurringPayment.fromJson(response.data);
     } catch (e) {
       throw Exception('Failed to create payment: $e');
+    }
+  }
+
+  Future<RecurringPayment> updatePayment(RecurringPayment payment) async {
+    try {
+      final response = await _dio.put(
+        '/automation/payments/${payment.id}',
+        data: payment.toJson(),
+      );
+      return RecurringPayment.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Failed to update payment: $e');
+    }
+  }
+
+  Future<void> deletePayment(String id) async {
+    try {
+      await _dio.delete('/automation/payments/$id');
+    } catch (e) {
+      throw Exception('Failed to delete payment: $e');
     }
   }
 }
