@@ -1,0 +1,4 @@
+build/** linguist-vendored
+.dart_tool/** linguist-vendored
+*.html linguist-detectable=false
+*.js linguist-detectable=false
