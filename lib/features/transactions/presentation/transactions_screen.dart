@@ -1,4 +1,5 @@
 import 'package:finanzapp_v2/features/history/data/history_provider.dart';
+import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         year: _selectedDate.year,
       )),
     );
+    final accountsAsync = ref.watch(accountsListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,6 +56,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             symbol: '\$',
             decimalDigits: 0,
           );
+
+          final accounts = accountsAsync.valueOrNull ?? const [];
+          final accountsById = {for (final a in accounts) a.id: a};
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -159,11 +164,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: summary.transactions.length,
+                    itemCount: summary.transactions.length + 1,
                     itemBuilder: (context, index) {
+                      if (index == summary.transactions.length) {
+                        return const SizedBox(height: 96);
+                      }
+
                       final tMap =
                           summary.transactions[index] as Map<String, dynamic>;
                       final t = Transaction.fromJson(tMap);
+                      final accountName = accountsById[t.accountId]?.name;
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
@@ -192,7 +202,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text(
-                            "${DateFormat.MMMd('es_ES').format(t.date)} • ${t.category}",
+                            accountName == null
+                                ? "${DateFormat.MMMd('es_ES').format(t.date)} • ${t.category}"
+                                : "${DateFormat.MMMd('es_ES').format(t.date)} • ${t.category} • $accountName",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -302,13 +314,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         // Refresh history
         ref.invalidate(personalHistoryProvider);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Transacción eliminada")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Transacción eliminada")));
       } catch (e) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }

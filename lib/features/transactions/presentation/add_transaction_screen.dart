@@ -84,6 +84,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       ),
       body: accountsAsync.when(
         data: (accounts) {
+          final currency = NumberFormat.currency(
+            symbol: '\$',
+            decimalDigits: 0,
+          );
+
           if (accounts.isEmpty) {
             return const Center(
               child: Text('Por favor, crea una cuenta primero.'),
@@ -249,7 +254,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           (a) => DropdownMenuItem(
                             value: a.id,
                             child: Text(
-                              '${a.name} (${_translateAccountType(a.type)})',
+                              '${a.name} (${currency.format(a.balance)})',
                             ),
                           ),
                         )
@@ -274,7 +279,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             (a) => DropdownMenuItem(
                               value: a.id,
                               child: Text(
-                                '${a.name} (${_translateAccountType(a.type)})',
+                                '${a.name} (${currency.format(a.balance)})',
                               ),
                             ),
                           )
@@ -347,23 +352,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
-  }
-
-  String _translateAccountType(String type) {
-    switch (type.toLowerCase()) {
-      case 'cash':
-        return 'Efectivo';
-      case 'savings':
-        return 'Ahorros';
-      case 'checking':
-        return 'Corriente';
-      case 'credit':
-        return 'Crédito';
-      case 'investment':
-        return 'Inversión';
-      default:
-        return type;
-    }
   }
 
   Future<void> _pickDate() async {
@@ -581,7 +569,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             destinationAccountId: _destinationAccountId,
             userId: t.userId, // Maintain user ID
             excludeFromBalance: _excludeFromBalance,
-            paidWithCreditCard: _type == 'expense' ? _paidWithCreditCard : false,
+            paidWithCreditCard: _type == 'expense'
+                ? _paidWithCreditCard
+                : false,
           );
 
           await ref
@@ -608,7 +598,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 budgetId: finalBudgetId,
                 destinationAccountId: _destinationAccountId,
                 excludeFromBalance: _excludeFromBalance,
-                paidWithCreditCard: _type == 'expense' ? _paidWithCreditCard : false,
+                paidWithCreditCard: _type == 'expense'
+                    ? _paidWithCreditCard
+                    : false,
               );
           if (mounted) {
             ScaffoldMessenger.of(
