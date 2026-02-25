@@ -75,7 +75,7 @@ class HouseholdSnapshotRepository {
           if (decoded is Map<String, dynamic>) {
             return {
               'snapshot': HouseholdSnapshot.fromJson(decoded['snapshot']),
-              'items': (decoded['items'] as List)
+              'items': ((decoded['items'] as List?) ?? const [])
                   .map((e) => HouseholdItem.fromJson(e))
                   .toList(),
             };
@@ -95,7 +95,7 @@ class HouseholdSnapshotRepository {
 
       return {
         'snapshot': HouseholdSnapshot.fromJson(data['snapshot']),
-        'items': (data['items'] as List)
+        'items': ((data['items'] as List?) ?? const [])
             .map((e) => HouseholdItem.fromJson(e))
             .toList(),
       };
