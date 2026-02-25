@@ -26,6 +26,17 @@ class HouseholdSnapshotRepository {
     }
   }
 
+  Future<void> clearSnapshot(String householdId, int year, int month) async {
+    try {
+      await _dio.post(
+        '/households/$householdId/clear',
+        data: {'year': year, 'month': month},
+      );
+    } catch (e) {
+      throw Exception('Failed to clear snapshot: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getSnapshot(
     String householdId,
     int year,

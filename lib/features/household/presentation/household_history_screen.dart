@@ -82,6 +82,56 @@ class _HouseholdHistoryScreenState
     }
   }
 
+  Future<void> _clearSnapshot() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Limpiar historial del mes?"),
+        content: const Text(
+          "Esto borra TODO el historial copia (editable) de este mes y lo deja en cero.\n\nNo borra tu historial personal.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Limpiar"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref
+          .read(householdSnapshotRepositoryProvider)
+          .clearSnapshot(
+            widget.household.id,
+            _selectedDate.year,
+            _selectedDate.month,
+          );
+
+      ref.invalidate(householdSnapshotProvider);
+      ref.invalidate(periodsListProvider(widget.household.id));
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Historial limpiado")));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
   Future<void> _executeSettlement(String periodId) async {
     setState(() => isSettling = true);
     try {
@@ -99,7 +149,7 @@ class _HouseholdHistoryScreenState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Mes cerrado exitosamente!")),
+          const SnackBar(content: Text("Estado de mes actualizado")),
         );
       }
     } catch (e) {
@@ -751,10 +801,14 @@ class _HouseholdHistoryScreenState
                                 final amICreditor =
                                     settlement.creditorId == userId;
 
+                                final displayBalance = isClosed
+                                    ? 0.0
+                                    : settlement.balance;
+
                                 String msg = "¡Todo en paz y salvo!";
                                 Color msgColor = Colors.grey;
 
-                                if (settlement.balance > 0) {
+                                if (displayBalance > 0) {
                                   if (amIDebtor) {
                                     msg = "Debes ajustar a tu pareja";
                                     msgColor = Colors.red;
@@ -796,13 +850,13 @@ class _HouseholdHistoryScreenState
                                             fontSize: 16,
                                           ),
                                         ),
-                                        if (settlement.balance > 0)
+                                        if (displayBalance > 0 || isClosed)
                                           Padding(
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 8.0,
                                             ),
                                             child: Text(
-                                              "\$ ${currency.format(settlement.balance)}",
+                                              "\$ ${currency.format(displayBalance)}",
                                               style: TextStyle(
                                                 fontSize: 24,
                                                 fontWeight: FontWeight.bold,
@@ -812,40 +866,42 @@ class _HouseholdHistoryScreenState
                                           ),
 
                                         const SizedBox(height: 12),
-                                        if (!isClosed)
-                                          ElevatedButton.icon(
-                                            onPressed: isSettling
-                                                ? null
-                                                : () => _executeSettlement(
-                                                    period.id,
-                                                  ),
-                                            icon: isSettling
-                                                ? const SizedBox(
-                                                    width: 16,
-                                                    height: 16,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  )
-                                                : const Icon(Icons.lock_clock),
-                                            label: const Text("CERRAR MES"),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.blue.shade700,
-                                              foregroundColor: Colors.white,
-                                              minimumSize: const Size(
-                                                double.infinity,
-                                                40,
-                                              ),
-                                            ),
-                                          )
-                                        else
-                                          const Chip(
-                                            label: Text("MES CERRADO"),
-                                            avatar: Icon(Icons.lock, size: 16),
-                                            backgroundColor: Colors.white,
+                                        ElevatedButton.icon(
+                                          onPressed: isSettling
+                                              ? null
+                                              : () => _executeSettlement(
+                                                  period.id,
+                                                ),
+                                          icon: isSettling
+                                              ? const SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Icon(
+                                                  isClosed
+                                                      ? Icons.lock_open
+                                                      : Icons.lock_clock,
+                                                ),
+                                          label: Text(
+                                            isClosed
+                                                ? "REABRIR MES"
+                                                : "CERRAR MES",
                                           ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: isClosed
+                                                ? Colors.grey.shade700
+                                                : Colors.blue.shade700,
+                                            foregroundColor: Colors.white,
+                                            minimumSize: const Size(
+                                              double.infinity,
+                                              40,
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -898,6 +954,24 @@ class _HouseholdHistoryScreenState
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _clearSnapshot,
+                                  icon: const Icon(
+                                    Icons.delete_sweep,
+                                    size: 16,
+                                    color: Colors.red,
+                                  ),
+                                  label: const Text("Limpiar"),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    foregroundColor: Colors.red,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -944,6 +1018,9 @@ class _HouseholdHistoryScreenState
                     else
                       ...items.map((item) {
                         final currency = NumberFormat("#,##0", "es_CO");
+                        final ownerLabel = item.userId == null
+                            ? 'Hogar'
+                            : (item.userId == userId ? 'Tú' : 'Pareja');
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: item.type == 'income'
@@ -969,7 +1046,7 @@ class _HouseholdHistoryScreenState
                                   item.description!.isNotEmpty)
                                 Text(item.description!),
                               Text(
-                                DateFormat.yMMMd('es_ES').format(item.date),
+                                "${DateFormat.yMMMd('es_ES').format(item.date)} • $ownerLabel",
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
