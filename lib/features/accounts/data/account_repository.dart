@@ -74,4 +74,12 @@ class AccountRepository {
       throw Exception('Failed to reorder accounts: $e');
     }
   }
+
+  Future<void> deleteAccount(String accountId) async {
+    try {
+      await _dio.delete('/accounts/$accountId');
+    } catch (e) {
+      throw Exception('Failed to delete account: $e');
+    }
+  }
 }

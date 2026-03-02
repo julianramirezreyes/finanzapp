@@ -261,6 +261,51 @@ class AccountsScreen extends ConsumerWidget {
             },
           ),
           TextButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+
+              // Close the edit dialog before any async work to avoid using dialogContext
+              // across async gaps.
+              Navigator.pop(dialogContext);
+
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: const Text('Eliminar cuenta'),
+                  content: const Text(
+                    '¿Seguro que deseas eliminar esta cuenta? Esta acción no borrará tu historial, pero la cuenta dejará de aparecer en tus cuentas.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(c, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Eliminar'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed != true) return;
+              try {
+                await ref
+                    .read(accountRepositoryProvider)
+                    .deleteAccount(account.id);
+                ref.invalidate(accountsListProvider);
+              } catch (e) {
+                if (!context.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Error al eliminar: $e')),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar'),
           ),
