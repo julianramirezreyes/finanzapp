@@ -1,5 +1,12 @@
 import 'package:finanzapp_v2/features/dashboard/data/dashboard_provider.dart';
 import 'package:finanzapp_v2/features/automation/data/automation_repository.dart';
+import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
+import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
+import 'package:finanzapp_v2/features/history/data/history_provider.dart';
+import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
+import 'package:finanzapp_v2/features/household/data/household_provider.dart';
+import 'package:finanzapp_v2/features/household/presentation/household_history_screen.dart'
+    show householdSnapshotProvider;
 import 'package:finanzapp_v2/features/dashboard/presentation/widgets/app_drawer.dart'; // Import AppDrawer
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,10 +54,10 @@ class _QuickActionsNotifier extends StateNotifier<AsyncValue<List<String>>> {
 // State for customizing quick actions with persistence
 final quickActionsStateProvider =
     StateNotifierProvider<_QuickActionsNotifier, AsyncValue<List<String>>>((
-  ref,
-) {
-  return _QuickActionsNotifier();
-});
+      ref,
+    ) {
+      return _QuickActionsNotifier();
+    });
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -97,7 +104,16 @@ class DashboardScreen extends ConsumerWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              onPressed: () => ref.refresh(dashboardProvider),
+              onPressed: () {
+                ref.invalidate(dashboardProvider);
+                ref.invalidate(accountsListProvider);
+                ref.invalidate(transactionsListProvider);
+                ref.invalidate(personalHistoryProvider);
+                ref.invalidate(budgetsListProvider);
+                ref.invalidate(householdProvider);
+                ref.invalidate(householdSnapshotProvider);
+                ref.invalidate(pendingPaymentsProvider);
+              },
             ),
             // The EndDrawer hamburger icon appears automatically here
           ],
@@ -147,8 +163,9 @@ class DashboardScreen extends ConsumerWidget {
 
                     return LayoutBuilder(
                       builder: (context, constraints) {
-                        final crossAxisCount =
-                            constraints.maxWidth > 400 ? 4 : 3;
+                        final crossAxisCount = constraints.maxWidth > 400
+                            ? 4
+                            : 3;
 
                         // Define all possible actions
                         final allActions = [
@@ -253,8 +270,9 @@ class DashboardScreen extends ConsumerWidget {
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary
-                            .withValues(alpha: 0.1),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
                         child: Icon(
                           Icons.account_balance,
                           color: Theme.of(context).colorScheme.primary,
@@ -582,24 +600,21 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Resumen del mes',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              'Resumen del año',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
-              DateFormat.yMMMM('es_ES').format(DateTime.now()).toUpperCase(),
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              DateTime.now().year.toString(),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
             _buildMonthlySummaryRow(
               context,
               label: 'Ingresos',
-              amount: data.monthlyIncome,
+              amount: data.yearlyIncome,
               color: Colors.green,
               format: format,
             ),
@@ -607,16 +622,16 @@ class DashboardScreen extends ConsumerWidget {
             _buildMonthlySummaryRow(
               context,
               label: 'Gastos totales',
-              amount: data.monthlyExpense,
+              amount: data.yearlyExpense,
               color: Colors.red,
               format: format,
             ),
             const SizedBox(height: 8),
             _buildMonthlySummaryRow(
               context,
-              label: 'Balance del mes',
-              amount: data.monthlyBalance,
-              color: data.monthlyBalance >= 0 ? Colors.blue : Colors.redAccent,
+              label: 'Balance del año',
+              amount: data.yearlyBalance,
+              color: data.yearlyBalance >= 0 ? Colors.blue : Colors.redAccent,
               format: format,
             ),
           ],

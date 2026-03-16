@@ -5,18 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DashboardData {
   final double totalBalance;
-  final double monthlyIncome;
-  final double monthlyExpense;
+  final double yearlyIncome;
+  final double yearlyExpense;
   final List<Account> accounts;
 
   DashboardData({
     required this.totalBalance,
-    required this.monthlyIncome,
-    required this.monthlyExpense,
+    required this.yearlyIncome,
+    required this.yearlyExpense,
     required this.accounts,
   });
 
-  double get monthlyBalance => monthlyIncome - monthlyExpense;
+  double get yearlyBalance => yearlyIncome - yearlyExpense;
 }
 
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
@@ -29,17 +29,14 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
   final accounts = await accountRepo.getAccounts();
   final totalBalance = accounts.fold(0.0, (sum, acc) => sum + acc.balance);
 
-  // 2. Fetch Transactions for Current Month
+  // 2. Fetch Transactions for Current Year (YTD)
   final now = DateTime.now();
-  final startOfMonth = DateTime(now.year, now.month, 1);
-  // Backend filtra con "t.date <= end_date". Si enviamos el último día a las 00:00,
-  // se excluyen transacciones del resto de ese día.
-  final endOfMonth = DateTime(now.year, now.month + 1, 1)
-      .subtract(const Duration(microseconds: 1));
+  final startOfYear = DateTime(now.year, 1, 1);
+  final endOfNow = now;
 
   final transactions = await transactionRepo.getTransactions(
-    startDate: startOfMonth,
-    endDate: endOfMonth,
+    startDate: startOfYear,
+    endDate: endOfNow,
     limit: 1000, // Fetch all for accurate summary
   );
 
@@ -61,8 +58,8 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
 
   return DashboardData(
     totalBalance: totalBalance,
-    monthlyIncome: income,
-    monthlyExpense: expense,
+    yearlyIncome: income,
+    yearlyExpense: expense,
     accounts: accounts,
   );
 });

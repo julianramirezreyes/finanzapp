@@ -1,7 +1,11 @@
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
+import 'package:finanzapp_v2/features/dashboard/data/dashboard_provider.dart';
+import 'package:finanzapp_v2/features/history/data/history_provider.dart';
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
+import 'package:finanzapp_v2/features/household/presentation/household_history_screen.dart'
+    show householdSnapshotProvider;
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
 import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
@@ -612,6 +616,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         // Refresh providers
         ref.invalidate(transactionsListProvider);
         ref.invalidate(accountsListProvider);
+        ref.invalidate(dashboardProvider);
+        ref.invalidate(personalHistoryProvider);
+        ref.invalidate(budgetsListProvider);
+        ref.invalidate(householdSnapshotProvider);
         // Also refresh history provider!
         // We don't know the exact month/year of the edited transaction easily here (old vs new),
         // but typically we refresh the view user is on.

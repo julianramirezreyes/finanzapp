@@ -174,6 +174,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           summary.transactions[index] as Map<String, dynamic>;
                       final t = Transaction.fromJson(tMap);
                       final accountName = accountsById[t.accountId]?.name;
+                      final contextLabel = t.context == 'household'
+                          ? 'Hogar'
+                          : 'Personal';
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
@@ -203,8 +206,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           ),
                           subtitle: Text(
                             accountName == null
-                                ? "${DateFormat.MMMd('es_ES').format(t.date)} • ${t.category}"
-                                : "${DateFormat.MMMd('es_ES').format(t.date)} • ${t.category} • $accountName",
+                                ? "${DateFormat.MMMd('es_ES').format(t.date)} • $contextLabel • ${t.category}"
+                                : "${DateFormat.MMMd('es_ES').format(t.date)} • $contextLabel • ${t.category} • $accountName",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],

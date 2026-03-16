@@ -54,7 +54,7 @@ class Transaction {
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final data = <String, dynamic>{
       'id': id,
       'account_id': accountId,
       'amount': amount,
@@ -66,10 +66,15 @@ class Transaction {
       'household_id': householdId,
       'budget_id': budgetId,
       'destination_account_id': destinationAccountId,
-      'user_id': userId,
       'exclude_from_balance': excludeFromBalance,
       'paid_with_credit_card': paidWithCreditCard,
     };
+
+    if (userId.isNotEmpty) {
+      data['user_id'] = userId;
+    }
+
+    return data;
   }
 
   Transaction copyWith({
