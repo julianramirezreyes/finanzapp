@@ -1,3 +1,5 @@
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
@@ -27,19 +29,16 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
 class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Form Fields
-  String _type = 'expense'; // expense, income, transfer
+  String _type = 'expense';
   double _amount = 0;
   String _description = '';
   DateTime _date = DateTime.now();
-  String _context = 'personal'; // personal, household
+  String _context = 'personal';
   String? _accountId;
-  String? _destinationAccountId; // For transfers
+  String? _destinationAccountId;
   bool _excludeFromBalance = false;
   bool _paidWithCreditCard = false;
 
-  // Selection Logic for Category/Budget
-  // Value format: "static:Name" or "budget:UUID"
   String? _selectionValue;
 
   @override
@@ -57,22 +56,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _excludeFromBalance = t.excludeFromBalance;
       _paidWithCreditCard = t.paidWithCreditCard;
 
-      // Pre-select category/budget
       if (t.budgetId != null) {
         _selectionValue = "budget:${t.budgetId}";
       } else {
-        // Try to match static category
-        // NOTE: This might fail if the category is not in the static list,
-        // but the build method defaults to standard ones.
-        // We might need to strictly match logic or allow free text if we supported it.
-        // For now, assume it matches one of our static keys or set as "static:General"
-        // Actually, we store "Salario", not "static:Salario".
-        // So we need to reconstruct the key.
         _selectionValue = "static:${t.category}";
-        // Note: This relies on the category name matching the static key suffix.
-        // If we saved "Ubers", and we don't have "static:Ubers", this selects nothing -> defaults to first.
-        // If we want to support arbitrary categories without budget, we need a better selector.
-        // But per requirements, we constrained categories.
       }
     }
   }
@@ -81,10 +68,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsListProvider);
     final isEditing = widget.transactionToEdit != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Editar Transacción' : 'Nueva Transacción'),
+        backgroundColor: isDark
+            ? AppColors.surfaceDark
+            : AppColors.surfaceLight,
+        elevation: 0,
       ),
       body: accountsAsync.when(
         data: (accounts) {
@@ -94,259 +86,66 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           );
 
           if (accounts.isEmpty) {
-            return const Center(
-              child: Text('Por favor, crea una cuenta primero.'),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 64,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Por favor, crea una cuenta primero.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             );
           }
-          // Set default account if not set
+
           if (_accountId == null && accounts.isNotEmpty) {
             _accountId = accounts.first.id;
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Type Selector (Segmented Button)
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(
-                        value: 'expense',
-                        label: Text('Gasto'),
-                        icon: Icon(Icons.arrow_downward),
-                      ),
-                      ButtonSegment(
-                        value: 'income',
-                        label: Text('Ingreso'),
-                        icon: Icon(Icons.arrow_upward),
-                      ),
-                      ButtonSegment(
-                        value: 'transfer',
-                        label: Text('Transferencia'),
-                        icon: Icon(Icons.swap_horiz),
-                      ),
-                    ],
-                    selected: {_type},
-                    onSelectionChanged: (Set<String> newSelection) {
-                      setState(() {
-                        _type = newSelection.first;
-                        if (_type == 'transfer') {
-                          _selectionValue = null;
-                        }
-                      });
-                    },
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.resolveWith<Color?>((
-                        states,
-                      ) {
-                        if (states.contains(WidgetState.selected)) {
-                          if (_type == 'expense') return Colors.red.shade100;
-                          if (_type == 'income') return Colors.green.shade100;
-                          return Colors.blue.shade100;
-                        }
-                        return null;
-                      }),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Amount
-                  TextFormField(
-                    initialValue: isEditing && _amount > 0
-                        ? _amount.toString()
-                        : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Monto',
-                      prefixText: '\$ ',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Ingresa un monto';
-                      }
-                      final v = double.tryParse(value);
-                      if (v == null || v <= 0) return 'Monto inválido';
-                      return null;
-                    },
-                    onSaved: (value) => _amount = double.parse(value!),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Description
-                  TextFormField(
-                    initialValue: _description,
-                    decoration: const InputDecoration(
-                      labelText: 'Descripción',
-                      border: OutlineInputBorder(),
-                    ),
-                    textCapitalization: TextCapitalization.sentences,
-                    onSaved: (value) => _description = value ?? '',
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Context & Date Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: _pickDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Fecha',
-                              border: OutlineInputBorder(),
-                              suffixIcon: Icon(Icons.calendar_today),
-                            ),
-                            child: Text(
-                              DateFormat.yMMMd('es_ES').format(_date),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          key: ValueKey(_context),
-                          initialValue:
-                              _context, // Use value instead of initialValue for dynamic udpates if needed, but here simple
-                          decoration: const InputDecoration(
-                            labelText: 'Contexto',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'personal',
-                              child: Text('Personal'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'household',
-                              child: Text('Hogar'),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            setState(() {
-                              _context = v!;
-                              _selectionValue = null;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Dynamic Category/Budget Selector
+                  _buildTypeSelector(),
+                  const SizedBox(height: AppSpacing.xxl),
+                  _buildAmountField(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildDescriptionField(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildDateAndContextRow(isDark),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildCategorySelector(ref),
-
-                  const SizedBox(height: 16),
-
-                  // Account Selector
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(_accountId),
-                    initialValue: _accountId,
-                    decoration: const InputDecoration(
-                      labelText: 'Cuenta',
-                      helperText: 'Cuenta origen',
-                    ),
-                    items: accounts
-                        .map(
-                          (a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text(
-                              '${a.name} (${currency.format(a.balance)})',
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _accountId = v),
-                    validator: (v) => v == null ? 'Requerido' : null,
-                  ),
-
-                  // Destination Account (Only for Transfer)
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildAccountSelector(accounts, currency),
                   if (_type == 'transfer') ...[
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(_destinationAccountId),
-                      initialValue: _destinationAccountId,
-                      decoration: const InputDecoration(
-                        labelText: 'Cuenta Destino',
-                        helperText: 'A donde envías el dinero',
-                      ),
-                      items: accounts
-                          .where((a) => a.id != _accountId)
-                          .map(
-                            (a) => DropdownMenuItem(
-                              value: a.id,
-                              child: Text(
-                                '${a.name} (${currency.format(a.balance)})',
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _destinationAccountId = v),
-                      validator: (v) =>
-                          _type == 'transfer' && v == null ? 'Requerido' : null,
-                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _buildDestinationAccountSelector(accounts, currency),
                   ],
-
-                  const SizedBox(height: 16),
-
-                  // Exclude from Balance Switch
-                  SwitchListTile(
-                    title: const Text('No afectar saldo'),
-                    subtitle: const Text(
-                      'Regístralo en el historial pero no descuentes dinero',
-                    ),
-                    value: _excludeFromBalance,
-                    onChanged: _paidWithCreditCard
-                        ? null
-                        : (bool value) {
-                            setState(() {
-                              _excludeFromBalance = value;
-                            });
-                          },
-                    secondary: const Icon(Icons.money_off),
-                  ),
-
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildExcludeFromBalanceSwitch(isDark),
                   if (_type == 'expense') ...[
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      title: const Text('Pagado con Tarjeta de Crédito'),
-                      subtitle: const Text(
-                        'No descuenta saldo del banco y no cuenta en gastos mensuales',
-                      ),
-                      value: _paidWithCreditCard,
-                      onChanged: (bool value) {
-                        setState(() {
-                          _paidWithCreditCard = value;
-                          if (_paidWithCreditCard) {
-                            _excludeFromBalance = true;
-                          }
-                        });
-                      },
-                      secondary: const Icon(Icons.credit_card),
-                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _buildCreditCardSwitch(isDark),
                   ],
-
-                  const SizedBox(height: 32),
-
-                  // Submit Button
-                  ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      isEditing ? 'Actualizar Transacción' : 'Guardar',
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                  ),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  _buildSubmitButton(isEditing, isDark),
                 ],
               ),
             ),
@@ -358,17 +157,284 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      locale: const Locale('es', 'ES'),
+  Widget _buildTypeSelector() {
+    return SegmentedButton<String>(
+      segments: [
+        ButtonSegment(
+          value: 'expense',
+          label: const Text('Gasto'),
+          icon: const Icon(Icons.arrow_downward, size: 18),
+        ),
+        ButtonSegment(
+          value: 'income',
+          label: const Text('Ingreso'),
+          icon: const Icon(Icons.arrow_upward, size: 18),
+        ),
+        ButtonSegment(
+          value: 'transfer',
+          label: const Text('Transferencia'),
+          icon: const Icon(Icons.swap_horiz, size: 18),
+        ),
+      ],
+      selected: {_type},
+      onSelectionChanged: (Set<String> newSelection) {
+        setState(() {
+          _type = newSelection.first;
+          if (_type == 'transfer') {
+            _selectionValue = null;
+          }
+        });
+      },
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            if (_type == 'expense') return AppColors.expenseLight;
+            if (_type == 'income') return AppColors.incomeLight;
+            return AppColors.investmentLight;
+          }
+          return Colors.transparent;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            if (_type == 'expense') return AppColors.expense;
+            if (_type == 'income') return AppColors.income;
+            return AppColors.investment;
+          }
+          return AppColors.textSecondary;
+        }),
+        padding: WidgetStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        ),
+      ),
     );
-    if (picked != null) {
-      setState(() => _date = picked);
-    }
+  }
+
+  Widget _buildAmountField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Monto',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          initialValue: isEditingAmount() ? _amount.toString() : null,
+          decoration: InputDecoration(
+            prefixText: '\$ ',
+            prefixStyle: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _type == 'expense'
+                  ? AppColors.expense
+                  : _type == 'income'
+                  ? AppColors.income
+                  : AppColors.investment,
+            ),
+            hintText: '0',
+            filled: true,
+            fillColor: AppColors.surfaceLight,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.expense),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+          ),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.next,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Ingresa un monto';
+            }
+            final v = double.tryParse(value);
+            if (v == null || v <= 0) return 'Monto inválido';
+            return null;
+          },
+          onSaved: (value) => _amount = double.parse(value!),
+        ),
+      ],
+    );
+  }
+
+  bool isEditingAmount() {
+    return widget.transactionToEdit != null && _amount > 0;
+  }
+
+  Widget _buildDescriptionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Descripción',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          initialValue: _description,
+          decoration: InputDecoration(
+            hintText: '¿Qué gastaste?',
+            filled: true,
+            fillColor: AppColors.surfaceLight,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+          ),
+          textCapitalization: TextCapitalization.sentences,
+          onSaved: (value) => _description = value ?? '',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateAndContextRow(bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Fecha',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          DateFormat.yMMMd('es_ES').format(_date),
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Contexto',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    key: ValueKey(_context),
+                    value: _context,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'personal',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 18),
+                            SizedBox(width: 8),
+                            Text('Personal'),
+                          ],
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'household',
+                        child: Row(
+                          children: [
+                            Icon(Icons.home_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Hogar'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      setState(() {
+                        _context = v!;
+                        _selectionValue = null;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCategorySelector(WidgetRef ref) {
@@ -384,36 +450,28 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         final List<DropdownMenuItem<String>> items = [];
 
         if (_type == 'income') {
-          items.add(
+          items.addAll([
             const DropdownMenuItem(
               value: "static:Salario",
               child: Text("Salario"),
             ),
-          );
-          items.add(
             const DropdownMenuItem(
               value: "static:Honorarios",
               child: Text("Honorarios"),
             ),
-          );
-          items.add(
             const DropdownMenuItem(
               value: "static:Regalo",
               child: Text("Regalo"),
             ),
-          );
-          items.add(
             const DropdownMenuItem(
               value: "static:Inversión",
               child: Text("Rendimiento Inversión"),
             ),
-          );
-          items.add(
             const DropdownMenuItem(
               value: "static:Otros",
               child: Text("Otros Ingresos"),
             ),
-          );
+          ]);
         } else {
           if (budgets.isNotEmpty) {
             for (var b in budgets) {
@@ -421,7 +479,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 DropdownMenuItem(
                   value: "budget:${b.id}",
                   child: Text(
-                    "🎯 ${b.category} (${b.isRecurrent ? 'Fijo' : 'Meta'})",
+                    "${b.category} (${b.isRecurrent ? 'Fijo' : 'Meta'})",
                   ),
                 ),
               );
@@ -439,49 +497,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           }
 
           if (items.isEmpty) {
-            items.add(
+            items.addAll([
               const DropdownMenuItem(
                 value: "static:General",
                 child: Text("General"),
               ),
-            );
-            items.add(
               const DropdownMenuItem(
                 value: "static:Otros",
                 child: Text("Otros Gastos"),
               ),
-            );
+            ]);
           }
         }
 
-        // Auto-select match logic or defaults
-        // Ensure _selectionValue is valid in list
-        // If _selectionValue is set (e.g. from init) but not in items, we might need to add it or clear it.
-        // For "static:CategoryName" we might need to handle cases where it came from API but isn't in our hardcoded list above.
-        // But for this "Hardening" phase, let's assumes basics work.
-
-        // Safety check
         if (_selectionValue == null ||
             !items.any((i) => i.value == _selectionValue)) {
-          // If editing and value not found, fallback to first
           if (items.isNotEmpty) _selectionValue = items.first.value;
         }
 
-        return InputDecorator(
-          decoration: const InputDecoration(
-            labelText: 'Categoría / Meta',
-            border: OutlineInputBorder(),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              key: ValueKey("cat_$_context$_type"),
-              value: _selectionValue,
-              isExpanded: true,
-              isDense: true,
-              items: items,
-              onChanged: (v) => setState(() => _selectionValue = v),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Categoría',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  key: ValueKey("cat_$_context$_type"),
+                  value: _selectionValue,
+                  isExpanded: true,
+                  items: items,
+                  onChanged: (v) => setState(() => _selectionValue = v),
+                ),
+              ),
+            ),
+          ],
         );
       },
       loading: () => const Center(child: LinearProgressIndicator()),
@@ -489,21 +552,278 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
+  Widget _buildAccountSelector(List<dynamic> accounts, NumberFormat currency) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Cuenta',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Cuenta origen',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: ValueKey(_accountId),
+              value: _accountId,
+              isExpanded: true,
+              items: accounts
+                  .map(
+                    (a) => DropdownMenuItem<String>(
+                      value: a.id as String,
+                      child: Text('${a.name} (${currency.format(a.balance)})'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _accountId = v),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDestinationAccountSelector(
+    List<dynamic> accounts,
+    NumberFormat currency,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Cuenta Destino',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'A donde envías el dinero',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: ValueKey(_destinationAccountId),
+              value: _destinationAccountId,
+              isExpanded: true,
+              items: accounts
+                  .where((a) => a.id != _accountId)
+                  .map(
+                    (a) => DropdownMenuItem<String>(
+                      value: a.id as String,
+                      child: Text('${a.name} (${currency.format(a.balance)})'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _destinationAccountId = v),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExcludeFromBalanceSwitch(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.warningLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.money_off, color: AppColors.warning, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No afectar saldo',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'Regístralo en el historial pero no descuentes dinero',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _excludeFromBalance,
+            onChanged: _paidWithCreditCard
+                ? null
+                : (bool value) {
+                    setState(() => _excludeFromBalance = value);
+                  },
+            activeTrackColor: AppColors.primary,
+            thumbColor: WidgetStateProperty.all(Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditCardSwitch(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.infoLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.credit_card, color: AppColors.info, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pagado con Tarjeta de Crédito',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'No descuenta saldo del banco',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _paidWithCreditCard,
+            onChanged: (bool value) {
+              setState(() {
+                _paidWithCreditCard = value;
+                if (_paidWithCreditCard) {
+                  _excludeFromBalance = true;
+                }
+              });
+            },
+            activeTrackColor: AppColors.primary,
+            thumbColor: WidgetStateProperty.all(Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(bool isEditing, bool isDark) {
+    Color buttonColor;
+    if (_type == 'expense') {
+      buttonColor = AppColors.expense;
+    } else if (_type == 'income') {
+      buttonColor = AppColors.income;
+    } else {
+      buttonColor = AppColors.investment;
+    }
+
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        gradient: LinearGradient(
+          colors: [buttonColor, buttonColor.withValues(alpha: 0.8)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: buttonColor.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
+        ),
+        child: Text(
+          isEditing ? 'Actualizar Transacción' : 'Guardar Transacción',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('es', 'ES'),
+    );
+    if (picked != null) {
+      setState(() => _date = picked);
+    }
+  }
+
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      // Resolve Category and BudgetID
       String finalCategory = 'General';
       String? finalBudgetId;
 
       if (_selectionValue != null) {
         if (_selectionValue!.startsWith("budget:")) {
           finalBudgetId = _selectionValue!.split(":")[1];
-          // Logic to get category name from ID if needed,
-          // BUT createTransaction/updateTransaction handles associating budget_id.
-          // However, we still need to send a category string to backend as legacy/display.
-          // We need to find the budget name again.
           final householdAsync = ref.read(householdProvider);
           final String? targetAuthId = _context == 'household'
               ? householdAsync.valueOrNull?.id
@@ -529,7 +849,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         finalCategory = _type == 'transfer' ? 'Transferencia' : 'General';
       }
 
-      // Resolve HouseholdID
       String? finalHouseholdId;
       if (_context == 'household') {
         final householdAsync = ref.read(householdProvider);
@@ -547,18 +866,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
       try {
         if (widget.transactionToEdit != null) {
-          // UPDATE
           final t = widget.transactionToEdit!;
 
-          // Handle case where householdId is null (personal), copyWith(householdId: null) might clear it?
-          // The generated copyWith usually keeps old value if null is passed unless explicit 'set null' is supported.
-          // Better to construct new object or use a proper update method.
-          // Since we don't have freezed, we likely have manual copyWith.
-          // Let's create a new object or map.
-          // Repo expects object.
-
-          // Actually Repo updateTransaction takes 'Transaction'.
-          // Let's manually construct it to ensure fields are correct.
           final toUpdate = Transaction(
             id: t.id,
             accountId: _accountId!,
@@ -571,7 +880,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             householdId: finalHouseholdId,
             budgetId: finalBudgetId,
             destinationAccountId: _destinationAccountId,
-            userId: t.userId, // Maintain user ID
+            userId: t.userId,
             excludeFromBalance: _excludeFromBalance,
             paidWithCreditCard: _type == 'expense'
                 ? _paidWithCreditCard
@@ -587,7 +896,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             );
           }
         } else {
-          // CREATE
           await ref
               .read(transactionRepositoryProvider)
               .createTransaction(
@@ -613,21 +921,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           }
         }
 
-        // Refresh providers
         ref.invalidate(transactionsListProvider);
         ref.invalidate(accountsListProvider);
         ref.invalidate(dashboardProvider);
         ref.invalidate(personalHistoryProvider);
         ref.invalidate(budgetsListProvider);
         ref.invalidate(householdSnapshotProvider);
-        // Also refresh history provider!
-        // We don't know the exact month/year of the edited transaction easily here (old vs new),
-        // but typically we refresh the view user is on.
-        // We can't invalidate families easily without parameters.
-        // BUT `TransactionsScreen` watches `personalHistoryProvider`.
-        // We can try to refresh it if we knew parameters.
-        // Ideally, we move to a stream or just accept that the user might need to pull-refresh or we trigger a broad refresh.
-        // For now, invalidating specific lists is good.
 
         if (mounted) {
           context.pop();

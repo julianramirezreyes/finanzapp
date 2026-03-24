@@ -1,7 +1,8 @@
 import 'package:finanzapp_v2/features/budgets/presentation/household_budget_tab.dart';
-import 'package:finanzapp_v2/features/budgets/presentation/personal_budget_tab.dart'; // We'll create this later
+import 'package:finanzapp_v2/features/budgets/presentation/personal_budget_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
 
 class FinancialPlanningScreen extends ConsumerStatefulWidget {
   const FinancialPlanningScreen({super.key});
@@ -32,23 +33,40 @@ class _FinancialPlanningScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Planificación Financiera"),
+        title: const Text('Planificación Financiera'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
           tabs: const [
-            Tab(text: "Hogar", icon: Icon(Icons.house)),
-            Tab(text: "Personal", icon: Icon(Icons.person)),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.home_outlined, size: 20),
+                  SizedBox(width: 8),
+                  Text('Hogar'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person_outline, size: 20),
+                  SizedBox(width: 8),
+                  Text('Personal'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          HouseholdBudgetTab(),
-          PersonalBudgetTab(), // Placeholder for now
-        ],
+        children: const [HouseholdBudgetTab(), PersonalBudgetTab()],
       ),
-      // floatingActionButton removed as per user feedback
     );
   }
 }

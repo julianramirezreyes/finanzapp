@@ -3,80 +3,153 @@ import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountsAsync = ref.watch(accountsListProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mis Cuentas')),
+      body: accountsAsync.when(
+        data: (accounts) => accounts.isEmpty
+            ? EmptyState(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Sin cuentas',
+                subtitle: 'Agrega tu primera cuenta para comenzar',
+                actionLabel: 'Agregar Cuenta',
+                onAction: () => _showCreateDialog(context, ref),
+              )
+            : ReorderableListView.builder(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: accounts.length,
+                onReorder: (oldIndex, newIndex) {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = accounts.removeAt(oldIndex);
+                  accounts.insert(newIndex, item);
+                  ref.read(accountRepositoryProvider).reorderAccounts(accounts);
+                },
+                itemBuilder: (context, index) {
+                  final acc = accounts[index];
+                  return FadeSlideTransition(
+                    key: ValueKey(acc.id),
+                    index: index,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: AccountTile(
+                        name: acc.name,
+                        type: acc.type,
+                        balance: acc.balance,
+                        showDragHandle: true,
+                        onTap: () => _showEditDialog(context, ref, acc),
+                      ),
+                    ),
+                  );
+                },
+              ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showCreateDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
   void _showCreateDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final balanceController = TextEditingController();
-    String selectedType = 'cash'; // Default valid type
+    String selectedType = 'cash';
     bool includeInNetWorth = true;
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Nueva Cuenta'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
-                  textCapitalization: TextCapitalization.sentences,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  prefixIcon: Icon(Icons.label_outline),
                 ),
-                TextField(
-                  controller: balanceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Balance Inicial',
-                  ),
-                  keyboardType: TextInputType.number,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextField(
+                controller: balanceController,
+                decoration: const InputDecoration(
+                  labelText: 'Balance Inicial',
+                  prefixIcon: Icon(Icons.attach_money),
                 ),
-                const SizedBox(height: 16),
-                DropdownButton<String>(
-                  value: selectedType,
-                  isExpanded: true,
-                  items: ['cash', 'savings', 'credit', 'investment']
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(_translateAccountType(type)),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Cuenta',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: ['cash', 'savings', 'credit', 'investment']
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Icon(_getAccountIcon(type), size: 20),
+                            const SizedBox(width: 8),
+                            Text(_translateAccountType(type)),
+                          ],
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedType = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Incluir en Patrimonio'),
-                  value: includeInNetWorth,
-                  onChanged: (val) {
-                    setState(() => includeInNetWorth = val);
-                  },
-                ),
-              ],
-            );
-          },
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedType = value;
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SwitchListTile(
+                title: const Text('Incluir en Patrimonio'),
+                value: includeInNetWorth,
+                onChanged: (val) {
+                  includeInNetWorth = val;
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               final name = nameController.text;
               final balance = double.tryParse(balanceController.text) ?? 0.0;
 
               if (name.isNotEmpty) {
-                Navigator.pop(dialogContext); // Close dialog first
+                Navigator.pop(dialogContext);
                 try {
                   await ref
                       .read(accountRepositoryProvider)
@@ -87,10 +160,8 @@ class AccountsScreen extends ConsumerWidget {
                         balance,
                         includeInNetWorth: includeInNetWorth,
                       );
-                  // Refresh provider after successful creation
                   ref.invalidate(accountsListProvider);
                 } catch (e) {
-                  // Handle error if needed, maybe show snackbar if context is mounted
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error al crear cuenta: $e')),
@@ -106,93 +177,6 @@ class AccountsScreen extends ConsumerWidget {
     );
   }
 
-  String _translateAccountType(String type) {
-    switch (type.toLowerCase()) {
-      case 'cash':
-        return 'Efectivo';
-      case 'savings':
-        return 'Ahorros';
-      case 'checking':
-        return 'Corriente';
-      case 'credit':
-        return 'Crédito';
-      case 'investment':
-        return 'Inversión';
-      default:
-        return type.toUpperCase();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final accountsAsync = ref.watch(accountsListProvider);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mis Cuentas')),
-      body: accountsAsync.when(
-        data: (accounts) => accounts.isEmpty
-            ? const Center(child: Text("Aún no tienes cuentas."))
-            : ReorderableListView.builder(
-                itemCount: accounts.length,
-                onReorder: (oldIndex, newIndex) {
-                  // Reorder logic
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final item = accounts.removeAt(oldIndex);
-                  accounts.insert(newIndex, item);
-
-                  // Update Backend
-                  ref.read(accountRepositoryProvider).reorderAccounts(accounts);
-                },
-                itemBuilder: (context, index) {
-                  final acc = accounts[index];
-                  return Container(
-                    key: ValueKey(acc.id),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
-                        child: Icon(
-                          Icons.account_balance_wallet,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(
-                        acc.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(_translateAccountType(acc.type)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '\$${acc.balance.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.drag_handle, color: Colors.grey),
-                        ],
-                      ),
-                      onTap: () => _showEditDialog(context, ref, acc),
-                    ),
-                  );
-                },
-              ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateDialog(context, ref),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
   void _showEditDialog(BuildContext context, WidgetRef ref, Account account) {
     final nameController = TextEditingController(text: account.name);
     String selectedType = account.type;
@@ -202,51 +186,63 @@ class AccountsScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Editar Cuenta'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
-                  textCapitalization: TextCapitalization.sentences,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  prefixIcon: Icon(Icons.label_outline),
                 ),
-                const SizedBox(height: 16),
-                DropdownButton<String>(
-                  value: selectedType,
-                  isExpanded: true,
-                  items: ['cash', 'savings', 'credit', 'investment']
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(_translateAccountType(type)),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Cuenta',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: ['cash', 'savings', 'credit', 'investment']
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Icon(_getAccountIcon(type), size: 20),
+                            const SizedBox(width: 8),
+                            Text(_translateAccountType(type)),
+                          ],
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedType = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Incluir en Patrimonio'),
-                  value: includeInNetWorth,
-                  onChanged: (val) {
-                    setState(() => includeInNetWorth = val);
-                  },
-                ),
-              ],
-            );
-          },
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedType = value;
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SwitchListTile(
+                title: const Text('Incluir en Patrimonio'),
+                value: includeInNetWorth,
+                onChanged: (val) {
+                  includeInNetWorth = val;
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.shield_outlined, size: 18),
             label: const Text('Bóveda'),
-            style: TextButton.styleFrom(foregroundColor: Colors.blueGrey),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             onPressed: () {
               Navigator.pop(dialogContext);
               Navigator.push(
@@ -263,9 +259,6 @@ class AccountsScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
-
-              // Close the edit dialog before any async work to avoid using dialogContext
-              // across async gaps.
               Navigator.pop(dialogContext);
 
               final confirmed = await showDialog<bool>(
@@ -273,7 +266,7 @@ class AccountsScreen extends ConsumerWidget {
                 builder: (c) => AlertDialog(
                   title: const Text('Eliminar cuenta'),
                   content: const Text(
-                    '¿Seguro que deseas eliminar esta cuenta? Esta acción no borrará tu historial, pero la cuenta dejará de aparecer en tus cuentas.',
+                    '¿Seguro que deseas eliminar esta cuenta?',
                   ),
                   actions: [
                     TextButton(
@@ -282,7 +275,9 @@ class AccountsScreen extends ConsumerWidget {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(c, true),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.expense,
+                      ),
                       child: const Text('Eliminar'),
                     ),
                   ],
@@ -296,20 +291,20 @@ class AccountsScreen extends ConsumerWidget {
                     .deleteAccount(account.id);
                 ref.invalidate(accountsListProvider);
               } catch (e) {
-                if (!context.mounted) return;
                 messenger.showSnackBar(
                   SnackBar(content: Text('Error al eliminar: $e')),
                 );
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.expense),
             child: const Text('Eliminar'),
           ),
+          const Spacer(),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               final name = nameController.text;
 
@@ -344,5 +339,39 @@ class AccountsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _translateAccountType(String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'Efectivo';
+      case 'savings':
+        return 'Ahorros';
+      case 'checking':
+        return 'Corriente';
+      case 'credit':
+        return 'Crédito';
+      case 'investment':
+        return 'Inversión';
+      default:
+        return type.toUpperCase();
+    }
+  }
+
+  IconData _getAccountIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return Icons.account_balance_wallet;
+      case 'savings':
+        return Icons.savings;
+      case 'checking':
+        return Icons.account_balance;
+      case 'credit':
+        return Icons.credit_card;
+      case 'investment':
+        return Icons.trending_up;
+      default:
+        return Icons.account_balance_wallet;
+    }
   }
 }

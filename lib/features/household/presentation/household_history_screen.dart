@@ -1,4 +1,6 @@
 import 'package:finanzapp_v2/core/network/dio_client.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/features/auth/presentation/auth_controller.dart';
 import 'package:finanzapp_v2/features/household/data/household_repository.dart';
 import 'package:finanzapp_v2/features/household/data/household_snapshot_repository.dart';
@@ -97,7 +99,7 @@ class _HouseholdHistoryScreenState
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.expense),
             child: const Text("Limpiar"),
           ),
         ],
@@ -172,28 +174,59 @@ class _HouseholdHistoryScreenState
     final didUpdate = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Editar ${item.type == 'income' ? 'Ingreso' : 'Gasto'}"),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        title: Text(
+          "Editar ${item.type == 'income' ? 'Ingreso' : 'Gasto'}",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Valor"),
+              decoration: InputDecoration(
+                labelText: "Valor",
+                prefixText: '\$ ',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                ),
+              ),
             ),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: "Descripción"),
+              decoration: InputDecoration(
+                labelText: "Descripción",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                ),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancelar"),
+            child: Text(
+              "Cancelar",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+              ),
+            ),
             child: const Text("Guardar"),
           ),
         ],
@@ -221,6 +254,9 @@ class _HouseholdHistoryScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
         title: const Text("¿Eliminar del Historial?"),
         content: const Text(
           "Esta acción solo afecta el historial compartido de este mes. \n\nEl registro original en tu cuenta personal NO se borrará.",
@@ -232,7 +268,7 @@ class _HouseholdHistoryScreenState
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.expense),
             child: const Text("Eliminar"),
           ),
         ],
@@ -253,12 +289,13 @@ class _HouseholdHistoryScreenState
     }
   }
 
-  // ... (Rest of code)
-
   void _showSplitConfig(BuildContext context, BudgetConfig currentConfig) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => _SplitConfigSheet(
         initialConfig: currentConfig,
         onSave: (newConfig) {
@@ -306,31 +343,61 @@ class _HouseholdHistoryScreenState
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text("Invitar a tu Pareja"),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.favorite,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text("Invitar a tu Pareja"),
+              ],
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "Ingresa el correo de tu pareja para enviarle una invitación directa:",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.lg),
                 TextField(
                   controller: emailController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: "Correo electrónico",
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                    hintText: "pareja@ejemplo.com",
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.inputRadius,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
                     ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: isLoading
                         ? null
@@ -366,42 +433,73 @@ class _HouseholdHistoryScreenState
                               }
                             }
                           },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.buttonRadius,
+                        ),
+                      ),
+                    ),
                     child: isLoading
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text("Enviar Invitación"),
                   ),
                 ),
-                const Divider(height: 32),
-                const Text(
-                  "O comparte este código manual:",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xl),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.backgroundLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
                   ),
-                  child: SelectableText(
-                    code,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      letterSpacing: 1,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    children: [
+                      Text(
+                        "O comparte este código:",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: SelectableText(
+                          code,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            letterSpacing: 1.5,
+                            color: AppColors.primary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
             actions: [
               TextButton.icon(
-                icon: const Icon(Icons.copy),
+                icon: Icon(Icons.copy, size: 18),
                 label: const Text("Copiar Código"),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: code));
@@ -444,17 +542,53 @@ class _HouseholdHistoryScreenState
             final isUserA = widget.household.userAId == currentUserId;
 
             return AlertDialog(
-              title: const Text("Gestionar Miembros"),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.people, color: AppColors.primary),
+                  const SizedBox(width: 12),
+                  const Text("Gestionar Miembros"),
+                ],
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primaryLight,
+                      child: Icon(Icons.person, color: AppColors.primary),
+                    ),
                     title: Text(widget.household.userAEmail),
                     subtitle: const Text("Administrador"),
-                    trailing: isUserA ? const Chip(label: Text("Tú")) : null,
+                    trailing: isUserA
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              "Tú",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
                   if (widget.household.userBEmail != null)
                     ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.savingsLight,
+                        child: Icon(Icons.person, color: AppColors.savings),
+                      ),
                       title: Text(widget.household.userBEmail!),
                       subtitle: const Text("Miembro"),
                       trailing: IconButton(
@@ -464,13 +598,18 @@ class _HouseholdHistoryScreenState
                               : (widget.household.userBId == currentUserId
                                     ? Icons.exit_to_app
                                     : Icons.info),
-                          color: Colors.red,
+                          color: AppColors.expense,
                         ),
                         onPressed: () async {
                           if (isUserA) {
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (c) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.cardRadius,
+                                  ),
+                                ),
                                 title: const Text("¿Eliminar Miembro?"),
                                 actions: [
                                   TextButton(
@@ -498,6 +637,11 @@ class _HouseholdHistoryScreenState
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (c) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.cardRadius,
+                                  ),
+                                ),
                                 title: const Text("¿Salir del Hogar?"),
                                 actions: [
                                   TextButton(
@@ -525,14 +669,54 @@ class _HouseholdHistoryScreenState
                       ),
                     )
                   else
-                    ListTile(
-                      tileColor: Colors.grey.shade100,
-                      title: const Text("Invitar Pareja"),
-                      subtitle: const Text("Cupo disponible"),
-                      leading: const Icon(Icons.person_add),
+                    InkWell(
                       onTap: () {
                         _showInvitationDialog(context, widget.household.id);
                       },
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.cardRadius,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.cardRadius,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_add, color: AppColors.primary),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Invitar Pareja",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Cupo disponible",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.primaryDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -551,7 +735,6 @@ class _HouseholdHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    // 1. Snapshot Data
     final snapshotAsync = ref.watch(
       householdSnapshotProvider((
         householdId: widget.household.id,
@@ -560,11 +743,9 @@ class _HouseholdHistoryScreenState
       )),
     );
 
-    // 2. Period/Settlement Data
     final periodsAsync = ref.watch(periodsListProvider(widget.household.id));
     final userId = ref.watch(userProvider)?.id;
 
-    // 3. Budget Config Data
     final budgetConfigAsync = ref.watch(
       budgetConfigProvider((
         type: 'household',
@@ -572,13 +753,22 @@ class _HouseholdHistoryScreenState
       )),
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text("Finanzas del Hogar"),
         centerTitle: true,
+        backgroundColor: isDark
+            ? AppColors.surfaceDark
+            : AppColors.surfaceLight,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.people),
+            icon: const Icon(Icons.people_outline),
             tooltip: "Miembros",
             onPressed: _showMembersDialog,
           ),
@@ -594,40 +784,60 @@ class _HouseholdHistoryScreenState
       ),
       body: Column(
         children: [
-          // Month Selector
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.md,
+              horizontal: AppSpacing.lg,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
+                _MonthButton(
+                  icon: Icons.chevron_left,
                   onPressed: () => _changeMonth(-1),
                 ),
-                Text(
-                  DateFormat.yMMMM('es_ES').format(_selectedDate).toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                  ),
+                  child: Text(
+                    DateFormat.yMMMM(
+                      'es_ES',
+                    ).format(_selectedDate).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
+                _MonthButton(
+                  icon: Icons.chevron_right,
                   onPressed: () => _changeMonth(1),
                 ),
               ],
             ),
           ),
-
-          // Content
           Expanded(
             child: snapshotAsync.when(
               data: (data) {
-                // final snapshot = data['snapshot'] as HouseholdSnapshot; // Unused
                 final items = data['items'] as List<HouseholdItem>;
 
-                // Calculate Totals Dynamically from Items
                 double incomeA = 0;
                 double incomeB = 0;
                 double expenseA = 0;
@@ -643,7 +853,6 @@ class _HouseholdHistoryScreenState
                       incomeB += item.amount;
                     }
                   } else {
-                    // Expenses
                     if (item.userId == widget.household.userAId) {
                       expenseA += item.amount;
                     } else {
@@ -671,8 +880,8 @@ class _HouseholdHistoryScreenState
                     : 0;
 
                 return ListView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   children: [
-                    // 1. Split Method Selector
                     if (budgetConfigAsync.value != null)
                       _SplitMethodSelector(
                         config: budgetConfigAsync.value!,
@@ -685,91 +894,22 @@ class _HouseholdHistoryScreenState
                         onCustomTap: () =>
                             _showSplitConfig(context, budgetConfigAsync.value!),
                       ),
-
                     if (budgetConfigAsync.isLoading)
                       const LinearProgressIndicator(),
-
-                    // 2. Monthly Summary
-                    Card(
-                      margin: const EdgeInsets.all(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            const Text(
-                              "RESUMEN DEL MES",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Incomes
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _SummaryItem(
-                                  label:
-                                      "Ingresos Tú (${pctA.toStringAsFixed(0)}%)",
-                                  value: incomeA,
-                                  color: Colors.green,
-                                ),
-                                _SummaryItem(
-                                  label:
-                                      "Ingresos Pareja (${pctB.toStringAsFixed(0)}%)",
-                                  value: incomeB,
-                                  color: Colors.blue,
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 24),
-                            // EXPENSES BREAKDOWN
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _SummaryItem(
-                                  label:
-                                      "Gastos Tú (${expPctA.toStringAsFixed(0)}%)",
-                                  value: expenseA,
-                                  color: Colors.red.shade300,
-                                ),
-                                _SummaryItem(
-                                  label:
-                                      "Gastos Pareja (${expPctB.toStringAsFixed(0)}%)",
-                                  value: expenseB,
-                                  color: Colors.red.shade300,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            // TOTALS
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _SummaryItem(
-                                  label: "Total Gastos",
-                                  value: totalExpenses,
-                                  color: Colors.red,
-                                  isBold: true,
-                                ),
-                                _SummaryItem(
-                                  label: "Balance Final",
-                                  value: balance,
-                                  color: balance >= 0
-                                      ? Colors.black
-                                      : Colors.red,
-                                  isBold: true,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SummaryCard(
+                      incomeA: incomeA,
+                      incomeB: incomeB,
+                      expenseA: expenseA,
+                      expenseB: expenseB,
+                      pctA: pctA,
+                      pctB: pctB,
+                      expPctA: expPctA,
+                      expPctB: expPctB,
+                      totalExpenses: totalExpenses,
+                      balance: balance,
                     ),
-
-                    // 3. Settlement / Closure Section
+                    const SizedBox(height: AppSpacing.lg),
                     periodsAsync.when(
                       data: (periods) {
                         final period = periods
@@ -806,15 +946,15 @@ class _HouseholdHistoryScreenState
                                     : settlement.balance;
 
                                 String msg = "¡Todo en paz y salvo!";
-                                Color msgColor = Colors.grey;
+                                Color msgColor = AppColors.textMuted;
 
                                 if (displayBalance > 0) {
                                   if (amIDebtor) {
                                     msg = "Debes ajustar a tu pareja";
-                                    msgColor = Colors.red;
+                                    msgColor = AppColors.expense;
                                   } else if (amICreditor) {
                                     msg = "Tu pareja debe ajustarte";
-                                    msgColor = Colors.green;
+                                    msgColor = AppColors.income;
                                   } else {
                                     msg = "Ajuste Pendiente";
                                   }
@@ -822,51 +962,82 @@ class _HouseholdHistoryScreenState
 
                                 final currency = NumberFormat("#,##0", "es_CO");
 
-                                return Card(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 16,
+                                return Container(
+                                  margin: const EdgeInsets.only(
+                                    top: AppSpacing.lg,
                                   ),
-                                  color: isClosed
-                                      ? Colors.grey.shade100
-                                      : Colors.blue.shade50,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          "LIQUIDACIÓN",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.2,
-                                            color: Colors.blueGrey.shade700,
+                                  padding: const EdgeInsets.all(AppSpacing.lg),
+                                  decoration: BoxDecoration(
+                                    color: isClosed
+                                        ? AppColors.textMuted.withValues(
+                                            alpha: 0.1,
+                                          )
+                                        : AppColors.investmentLight,
+                                    borderRadius: BorderRadius.circular(
+                                      AppSpacing.cardRadius,
+                                    ),
+                                    border: Border.all(
+                                      color: isClosed
+                                          ? AppColors.textMuted.withValues(
+                                              alpha: 0.2,
+                                            )
+                                          : AppColors.investment.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.account_balance_wallet,
+                                            size: 18,
+                                            color: isClosed
+                                                ? AppColors.textMuted
+                                                : AppColors.investment,
                                           ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "LIQUIDACIÓN",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1.2,
+                                              fontSize: 12,
+                                              color: isClosed
+                                                  ? AppColors.textMuted
+                                                  : AppColors.investment,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: AppSpacing.md),
+                                      Text(
+                                        msg,
+                                        style: TextStyle(
+                                          color: msgColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
                                         ),
-                                        const SizedBox(height: 8),
+                                      ),
+                                      if (displayBalance > 0 || isClosed) ...[
+                                        const SizedBox(height: AppSpacing.sm),
                                         Text(
-                                          msg,
+                                          "\$ ${currency.format(displayBalance)}",
                                           style: TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
                                             color: msgColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
                                           ),
                                         ),
-                                        if (displayBalance > 0 || isClosed)
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 8.0,
-                                            ),
-                                            child: Text(
-                                              "\$ ${currency.format(displayBalance)}",
-                                              style: TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: msgColor,
-                                              ),
-                                            ),
-                                          ),
-
-                                        const SizedBox(height: 12),
-                                        ElevatedButton.icon(
+                                      ],
+                                      const SizedBox(height: AppSpacing.lg),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 44,
+                                        child: ElevatedButton.icon(
                                           onPressed: isSettling
                                               ? null
                                               : () => _executeSettlement(
@@ -879,12 +1050,14 @@ class _HouseholdHistoryScreenState
                                                   child:
                                                       CircularProgressIndicator(
                                                         strokeWidth: 2,
+                                                        color: Colors.white,
                                                       ),
                                                 )
                                               : Icon(
                                                   isClosed
                                                       ? Icons.lock_open
                                                       : Icons.lock_clock,
+                                                  size: 18,
                                                 ),
                                           label: Text(
                                             isClosed
@@ -893,50 +1066,65 @@ class _HouseholdHistoryScreenState
                                           ),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: isClosed
-                                                ? Colors.grey.shade700
-                                                : Colors.blue.shade700,
+                                                ? AppColors.textMuted
+                                                : AppColors.investment,
                                             foregroundColor: Colors.white,
-                                            minimumSize: const Size(
-                                              double.infinity,
-                                              40,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppSpacing.buttonRadius,
+                                                  ),
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
-                              loading: () => const Center(
-                                child: LinearProgressIndicator(),
-                              ),
-                              error: (_, _) => const SizedBox.shrink(),
+                              loading: () => const LinearProgressIndicator(),
+                              error: (e, s) => const SizedBox.shrink(),
                             );
                           },
                         );
                       },
                       loading: () => const SizedBox.shrink(),
-                      error: (_, _) => const SizedBox.shrink(),
+                      error: (e, s) => const SizedBox.shrink(),
                     ),
-
-                    // 4. Loading / Copy Actions
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                    Container(
+                      margin: const EdgeInsets.only(top: AppSpacing.xl),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDark
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.cardRadius,
+                        ),
+                        border: Border.all(color: AppColors.borderLight),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "HISTORIAL COPIA (Editable)",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.cloud_sync,
+                                size: 16,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "HISTORIAL COPIA (Editable)",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.md),
                           Row(
                             children: [
                               Expanded(
@@ -944,75 +1132,108 @@ class _HouseholdHistoryScreenState
                                   onPressed: _syncSnapshot,
                                   icon: const Icon(
                                     Icons.cloud_download,
-                                    size: 16,
+                                    size: 18,
                                   ),
                                   label: const Text("Cargar Datos"),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      vertical: AppSpacing.md,
+                                    ),
+                                    side: BorderSide(color: AppColors.primary),
+                                    foregroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.buttonRadius,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: _clearSnapshot,
                                   icon: const Icon(
                                     Icons.delete_sweep,
-                                    size: 16,
-                                    color: Colors.red,
+                                    size: 18,
                                   ),
                                   label: const Text("Limpiar"),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      vertical: AppSpacing.md,
                                     ),
-                                    foregroundColor: Colors.red,
+                                    side: BorderSide(color: AppColors.expense),
+                                    foregroundColor: AppColors.expense,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.buttonRadius,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
                             "Al cargar, se copian los datos actuales. Modificar esta lista NO afecta el historial personal.",
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
                     ),
-
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: AppSpacing.xl,
+                        bottom: AppSpacing.md,
+                      ),
                       child: Text(
                         "Detalle de Movimientos",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
-
                     if (items.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.history,
-                                size: 48,
-                                color: Colors.grey,
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.xxxl),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.history,
+                              size: 64,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            Text(
+                              "No hay datos cargados para este mes.",
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            ElevatedButton.icon(
+                              onPressed: _syncSnapshot,
+                              icon: const Icon(Icons.cloud_download),
+                              label: const Text("Cargar Datos Ahora"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xl,
+                                  vertical: AppSpacing.md,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.buttonRadius,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                "No hay datos cargados para este mes.",
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: _syncSnapshot,
-                                child: const Text("Cargar Datos Ahora"),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       )
                     else
@@ -1021,74 +1242,112 @@ class _HouseholdHistoryScreenState
                         final ownerLabel = item.userId == null
                             ? 'Hogar'
                             : (item.userId == userId ? 'Tú' : 'Pareja');
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: item.type == 'income'
-                                ? Colors.green.shade100
-                                : Colors.red.shade100,
-                            child: Icon(
-                              item.type == 'income'
-                                  ? Icons.arrow_downward
-                                  : Icons.arrow_upward,
-                              color: item.type == 'income'
-                                  ? Colors.green
-                                  : Colors.red,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.surfaceDark
+                                : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.cardRadius,
                             ),
+                            border: Border.all(color: AppColors.borderLight),
                           ),
-                          title: Text(
-                            item.category ?? 'Sin categoría',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (item.description != null &&
-                                  item.description!.isNotEmpty)
-                                Text(item.description!),
-                              Text(
-                                "${DateFormat.yMMMd('es_ES').format(item.date)} • $ownerLabel",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs,
+                            ),
+                            leading: CircleAvatar(
+                              backgroundColor: item.type == 'income'
+                                  ? AppColors.incomeLight
+                                  : AppColors.expenseLight,
+                              child: Icon(
+                                item.type == 'income'
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: item.type == 'income'
+                                    ? AppColors.income
+                                    : AppColors.expense,
+                                size: 20,
                               ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "\$ ${currency.format(item.amount)}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: item.type == 'income'
-                                      ? Colors.green
-                                      : Colors.black,
-                                ),
+                            ),
+                            title: Text(
+                              item.category ?? 'Sin categoría',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
                               ),
-                              if (!item.isExcluded) ...[
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 20,
-                                    color: Colors.blue,
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (item.description != null &&
+                                    item.description!.isNotEmpty)
+                                  Text(
+                                    item.description!,
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                    ),
                                   ),
-                                  onPressed: () => _editItem(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: Colors.grey,
+                                Text(
+                                  "${DateFormat.yMMMd('es_ES').format(item.date)} • $ownerLabel",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
                                   ),
-                                  onPressed: () => _deleteItem(item.id),
                                 ),
                               ],
-                            ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "\$ ${currency.format(item.amount)}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: item.type == 'income'
+                                        ? AppColors.income
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (!item.isExcluded) ...[
+                                  const SizedBox(width: AppSpacing.xs),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.edit_outlined,
+                                      size: 18,
+                                      color: AppColors.info,
+                                    ),
+                                    onPressed: () => _editItem(item),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    onPressed: () => _deleteItem(item.id),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         );
                       }),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: AppSpacing.xxxxl),
                   ],
                 );
               },
@@ -1097,29 +1356,213 @@ class _HouseholdHistoryScreenState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Colors.grey,
+                      color: AppColors.expense,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     if (e.toString().contains('404'))
                       Column(
                         children: [
                           const Text("Este mes no ha sido iniciado."),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
+                          const SizedBox(height: AppSpacing.md),
+                          ElevatedButton.icon(
                             onPressed: _syncSnapshot,
-                            child: const Text("Iniciar Historial"),
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text("Iniciar Historial"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ],
                       )
                     else
-                      Text("Error: $e"),
+                      Text(
+                        "Error: $e",
+                        style: TextStyle(color: AppColors.expense),
+                      ),
                   ],
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _MonthButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primaryLight,
+      borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final double incomeA;
+  final double incomeB;
+  final double expenseA;
+  final double expenseB;
+  final double pctA;
+  final double pctB;
+  final double expPctA;
+  final double expPctB;
+  final double totalExpenses;
+  final double balance;
+
+  const _SummaryCard({
+    required this.incomeA,
+    required this.incomeB,
+    required this.expenseA,
+    required this.expenseB,
+    required this.pctA,
+    required this.pctB,
+    required this.expPctA,
+    required this.expPctB,
+    required this.totalExpenses,
+    required this.balance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = NumberFormat("#,##0", "es_CO");
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [AppColors.surfaceDark, AppColors.surfaceVariantDark]
+              : [AppColors.surfaceLight, AppColors.backgroundLight],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.analytics_outlined,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "RESUMEN DEL MES",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryItem(
+                  label: "Ingresos Tú (${pctA.toStringAsFixed(0)}%)",
+                  value: incomeA,
+                  color: AppColors.income,
+                ),
+              ),
+              Container(width: 1, height: 40, color: AppColors.borderLight),
+              Expanded(
+                child: _SummaryItem(
+                  label: "Ingresos Pareja (${pctB.toStringAsFixed(0)}%)",
+                  value: incomeB,
+                  color: AppColors.investment,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(height: 1, color: AppColors.dividerLight),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryItem(
+                  label: "Gastos Tú (${expPctA.toStringAsFixed(0)}%)",
+                  value: expenseA,
+                  color: AppColors.expense,
+                ),
+              ),
+              Container(width: 1, height: 40, color: AppColors.borderLight),
+              Expanded(
+                child: _SummaryItem(
+                  label: "Gastos Pareja (${expPctB.toStringAsFixed(0)}%)",
+                  value: expenseB,
+                  color: AppColors.expense,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(height: 1, color: AppColors.borderLight),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _SummaryItem(
+                label: "Total Gastos",
+                value: totalExpenses,
+                color: AppColors.expense,
+                isBold: true,
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "Balance Final",
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                  Text(
+                    "\$ ${currency.format(balance)}",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: balance >= 0
+                          ? AppColors.income
+                          : AppColors.expense,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -1144,19 +1587,20 @@ class _SummaryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat("#,##0", "es_CO");
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
         Text(
           "\$ ${currency.format(value)}",
           style: TextStyle(
             color: color,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            fontSize: 16,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            fontSize: isBold ? 18 : 15,
           ),
         ),
       ],
@@ -1178,29 +1622,29 @@ class _SplitMethodSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.infoLight,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.pie_chart, size: 16, color: Colors.grey),
+              Icon(Icons.pie_chart, size: 16, color: AppColors.info),
               const SizedBox(width: 8),
               Text(
                 "MÉTODO DE DIVISIÓN: ${config.splitMethod.toUpperCase()}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey,
+                  color: AppColors.info,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -1210,7 +1654,7 @@ class _SplitMethodSelector extends StatelessWidget {
                   onTap: () => onChanged('equal'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _MethodButton(
                   label: "Proporcional",
@@ -1218,7 +1662,7 @@ class _SplitMethodSelector extends StatelessWidget {
                   onTap: () => onChanged('proportional'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _MethodButton(
                   label: "Personalizado",
@@ -1233,7 +1677,7 @@ class _SplitMethodSelector extends StatelessWidget {
           ),
           if (config.splitMethod == 'custom')
             Padding(
-              padding: const EdgeInsets.only(top: 12.0),
+              padding: const EdgeInsets.only(top: AppSpacing.md),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1241,15 +1685,15 @@ class _SplitMethodSelector extends StatelessWidget {
                     "Tú: ${(config.customSplitA * 100).round()}%",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
+                      color: AppColors.info,
                     ),
                   ),
                   Expanded(
                     child: Text(
-                      " Ajuste manual activado",
+                      "Ajuste manual activado",
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey.shade600,
+                        color: AppColors.textMuted,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -1258,7 +1702,7 @@ class _SplitMethodSelector extends StatelessWidget {
                     "Pareja: ${(config.customSplitB * 100).round()}%",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
+                      color: AppColors.info,
                     ),
                   ),
                 ],
@@ -1286,19 +1730,22 @@ class _MethodButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.md,
+          horizontal: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? AppColors.surfaceLight : Colors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           border: Border.all(
-            color: isSelected ? Colors.blue.shade700 : Colors.transparent,
+            color: isSelected ? AppColors.info : Colors.transparent,
             width: 2,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    blurRadius: 4,
+                    color: AppColors.info.withValues(alpha: 0.15),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -1308,9 +1755,9 @@ class _MethodButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.blue.shade800 : Colors.grey.shade600,
+            color: isSelected ? AppColors.info : AppColors.textSecondary,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 11,
+            fontSize: 12,
           ),
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -1345,52 +1792,141 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 16,
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.xl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Configuración de Reparto",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Define cómo se dividirán los gastos compartidos este mes.",
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Participación A (Tú): ${(_splitA * 100).toStringAsFixed(0)}%",
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textMuted,
+                borderRadius: BorderRadius.circular(2),
               ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.infoLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.tune, color: AppColors.info, size: 24),
+              ),
+              const SizedBox(width: AppSpacing.md),
               Text(
-                "Participación B (Pareja): ${((1 - _splitA) * 100).toStringAsFixed(0)}%",
+                "Configuración de Reparto",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
-          Slider(
-            value: _splitA,
-            min: 0,
-            max: 1,
-            divisions: 20,
-            label: "${(_splitA * 100).round()}%",
-            onChanged: (val) => setState(() => _splitA = val),
-            activeColor: Colors.blue.shade700,
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            "Define cómo se dividirán los gastos compartidos este mes.",
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
-
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xxxl),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Tú (A)",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.info,
+                          ),
+                        ),
+                        Text(
+                          "${(_splitA * 100).toStringAsFixed(0)}%",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.info,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      Icons.swap_horiz,
+                      color: AppColors.textMuted,
+                      size: 32,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "Pareja (B)",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.savings,
+                          ),
+                        ),
+                        Text(
+                          "${((1 - _splitA) * 100).toStringAsFixed(0)}%",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.savings,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SliderTheme(
+                  data: SliderThemeData(
+                    activeTrackColor: AppColors.info,
+                    inactiveTrackColor: AppColors.savingsLight,
+                    thumbColor: AppColors.info,
+                    overlayColor: AppColors.info.withValues(alpha: 0.2),
+                    trackHeight: 8,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 12,
+                    ),
+                  ),
+                  child: Slider(
+                    value: _splitA,
+                    min: 0,
+                    max: 1,
+                    divisions: 20,
+                    onChanged: (val) => setState(() => _splitA = val),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
           SizedBox(
             width: double.infinity,
+            height: 52,
             child: ElevatedButton(
               onPressed: () {
                 final newConfig = widget.initialConfig.copyWith(
@@ -1400,10 +1936,20 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
                 );
                 widget.onSave(newConfig);
               },
-              child: const Text("Guardar Configuración Personalizada"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.info,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                ),
+              ),
+              child: const Text(
+                "Guardar Configuración",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );

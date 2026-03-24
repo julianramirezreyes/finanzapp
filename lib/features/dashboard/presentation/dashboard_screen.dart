@@ -7,12 +7,19 @@ import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
 import 'package:finanzapp_v2/features/household/presentation/household_history_screen.dart'
     show householdSnapshotProvider;
-import 'package:finanzapp_v2/features/dashboard/presentation/widgets/app_drawer.dart'; // Import AppDrawer
+import 'package:finanzapp_v2/features/dashboard/presentation/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/core/presentation/responsive_layout.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/balance_card.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/summary_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/action_chip.dart' as app_ui;
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _QuickActionsNotifier extends StateNotifier<AsyncValue<List<String>>> {
@@ -51,7 +58,6 @@ class _QuickActionsNotifier extends StateNotifier<AsyncValue<List<String>>> {
   }
 }
 
-// State for customizing quick actions with persistence
 final quickActionsStateProvider =
     StateNotifierProvider<_QuickActionsNotifier, AsyncValue<List<String>>>((
       ref,
@@ -67,7 +73,6 @@ class DashboardScreen extends ConsumerWidget {
     final dashboardAsync = ref.watch(dashboardProvider);
     final quickActionsAsync = ref.watch(quickActionsStateProvider);
 
-    // Startup Check for Pending Payments
     ref.listen(pendingPaymentsProvider, (previous, next) {
       next.whenData((payments) {
         if (payments.isNotEmpty) {
@@ -94,13 +99,14 @@ class DashboardScreen extends ConsumerWidget {
 
     final currencyFormat = NumberFormat.currency(
       symbol: '\$',
-      decimalDigits: 2,
+      decimalDigits: 0,
+      locale: 'es_CO',
     );
 
     return ResponsiveLayout(
       mobileBody: Scaffold(
         appBar: AppBar(
-          title: const Text('Resumen'),
+          title: const Text('FinanzApp'),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -115,199 +121,46 @@ class DashboardScreen extends ConsumerWidget {
                 ref.invalidate(pendingPaymentsProvider);
               },
             ),
-            // The EndDrawer hamburger icon appears automatically here
           ],
         ),
-        drawer: const AppDrawer(), // Left-side Drawer
+        drawer: const AppDrawer(),
         body: dashboardAsync.when(
           data: (data) => RefreshIndicator(
             onRefresh: () async => ref.refresh(dashboardProvider),
             child: ListView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                _buildBalanceCard(context, data.totalBalance, currencyFormat),
-                const SizedBox(height: 16),
-                _buildMonthlySummary(context, data, currencyFormat),
-                const SizedBox(height: 24),
-
-                // Quick Actions Header with Edit Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Accesos Rápidos',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      tooltip: "Personalizar",
-                      onPressed: () => _showQuickActionsConfig(context, ref),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                quickActionsAsync.when(
-                  data: (enabledActions) {
-                    if (enabledActions.isEmpty) {
-                      return Center(
-                        child: Text(
-                          "No hay accesos visibles.",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      );
-                    }
-
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 400
-                            ? 4
-                            : 3;
-
-                        // Define all possible actions
-                        final allActions = [
-                          _QuickActionItem(
-                            Icons.history,
-                            'Historial',
-                            Colors.blueGrey,
-                            '/transactions',
-                          ),
-                          _QuickActionItem(
-                            Icons.savings,
-                            'Metas',
-                            Colors.purple,
-                            '/budgets',
-                          ),
-                          _QuickActionItem(
-                            Icons.people,
-                            'Hogar',
-                            Colors.blue,
-                            '/household',
-                          ),
-                          _QuickActionItem(
-                            Icons.autorenew,
-                            'Automático',
-                            Colors.teal,
-                            '/automation',
-                          ),
-                          _QuickActionItem(
-                            Icons.account_balance,
-                            'Activos',
-                            Colors.indigo,
-                            '/assets',
-                          ),
-                          _QuickActionItem(
-                            Icons.assignment,
-                            'Declaración',
-                            Colors.orange,
-                            '/tax',
-                          ),
-                        ];
-
-                        // Filter visible ones
-                        final visibleActions = allActions
-                            .where((a) => enabledActions.contains(a.label))
-                            .toList();
-
-                        return GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          children: visibleActions
-                              .map(
-                                (action) => _buildQuickAction(
-                                  context,
-                                  action.icon,
-                                  action.label,
-                                  action.color.withValues(alpha: 0.1),
-                                  action.color,
-                                  () => context.push(action.route),
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
-                    );
-                  },
-                  loading: () => const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  error: (e, _) => Center(
-                    child: Text(
-                      "Error cargando accesos: $e",
-                      style: TextStyle(color: Colors.grey[600]),
-                      textAlign: TextAlign.center,
-                    ),
+                FadeSlideTransition(
+                  child: _buildBalanceCard(
+                    context,
+                    data.totalBalance,
+                    currencyFormat,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Mis Cuentas',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/accounts'),
-                      child: const Text('Gestionar'),
-                    ),
-                  ],
+                const SizedBox(height: AppSpacing.lg),
+                FadeSlideTransition(
+                  index: 1,
+                  child: _buildSummarySection(context, data, currencyFormat),
                 ),
-                const SizedBox(height: 8),
-                ...data.accounts.map(
-                  (acc) => Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
-                        child: Icon(
-                          Icons.account_balance,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(
-                        acc.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(translationAccountType(acc.type)),
-                      trailing: Text(
-                        currencyFormat.format(acc.balance),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      onTap: () {
-                        context.push(
-                          '/accounts/${acc.id}/vault',
-                          extra: {'name': acc.name},
-                        );
-                      },
-                    ),
+                const SizedBox(height: AppSpacing.xl),
+                FadeSlideTransition(
+                  index: 2,
+                  child: _buildQuickActionsSection(
+                    context,
+                    ref,
+                    quickActionsAsync,
                   ),
                 ),
-                if (data.accounts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(
-                      child: Text(
-                        'Aún no tienes cuentas. ¡Agrega una para comenzar!',
-                      ),
-                    ),
+                const SizedBox(height: AppSpacing.xl),
+                FadeSlideTransition(
+                  index: 3,
+                  child: _buildAccountsSection(
+                    context,
+                    data,
+                    currencyFormat,
+                    ref,
                   ),
+                ),
                 const SizedBox(height: 80),
               ],
             ),
@@ -317,7 +170,14 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: AppColors.expense,
+                ),
+                const SizedBox(height: AppSpacing.md),
                 Text('Error: $err', textAlign: TextAlign.center),
+                const SizedBox(height: AppSpacing.md),
                 ElevatedButton(
                   onPressed: () => ref.refresh(dashboardProvider),
                   child: const Text('Reintentar'),
@@ -357,23 +217,28 @@ class DashboardScreen extends ConsumerWidget {
               labelType: NavigationRailLabelType.all,
               destinations: const [
                 NavigationRailDestination(
-                  icon: Icon(Icons.dashboard),
+                  icon: Icon(Icons.dashboard_outlined),
+                  selectedIcon: Icon(Icons.dashboard),
                   label: Text('Resumen'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.people),
+                  icon: Icon(Icons.people_outline),
+                  selectedIcon: Icon(Icons.people),
                   label: Text('Hogar'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.savings),
+                  icon: Icon(Icons.savings_outlined),
+                  selectedIcon: Icon(Icons.savings),
                   label: Text('Metas'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.history),
+                  icon: Icon(Icons.history_outlined),
+                  selectedIcon: Icon(Icons.history),
                   label: Text('Historial'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.account_balance),
+                  icon: Icon(Icons.account_balance_outlined),
+                  selectedIcon: Icon(Icons.account_balance),
                   label: Text('Cuentas'),
                 ),
               ],
@@ -382,16 +247,16 @@ class DashboardScreen extends ConsumerWidget {
             Expanded(
               child: dashboardAsync.when(
                 data: (data) => ListView(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.all(AppSpacing.xxxl),
                   children: [
                     Text(
                       'Resumen Financiero',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSpacing.xxl),
                     Wrap(
-                      spacing: 20,
-                      runSpacing: 20,
+                      spacing: AppSpacing.xl,
+                      runSpacing: AppSpacing.xl,
                       children: [
                         SizedBox(
                           width: 400,
@@ -403,7 +268,7 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                         SizedBox(
                           width: 400,
-                          child: _buildMonthlySummary(
+                          child: _buildSummarySection(
                             context,
                             data,
                             currencyFormat,
@@ -411,36 +276,26 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSpacing.xxl),
                     Text(
                       'Mis Cuentas',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
+                      spacing: AppSpacing.lg,
+                      runSpacing: AppSpacing.lg,
                       children: data.accounts
                           .map(
                             (acc) => SizedBox(
                               width: 300,
-                              child: Card(
-                                child: ListTile(
-                                  title: Text(
-                                    acc.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    translationAccountType(acc.type),
-                                  ),
-                                  trailing: Text(
-                                    currencyFormat.format(acc.balance),
-                                  ),
-                                  onTap: () => context.push('/accounts'),
+                              child: AccountTile(
+                                name: acc.name,
+                                type: acc.type,
+                                balance: acc.balance,
+                                onTap: () => context.push(
+                                  '/accounts/${acc.id}/vault',
+                                  extra: {'name': acc.name},
                                 ),
                               ),
                             ),
@@ -456,6 +311,236 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBalanceCard(
+    BuildContext context,
+    double balance,
+    NumberFormat format,
+  ) {
+    return BalanceCard(
+      label: 'Tu Patrimonio Neto',
+      amount: balance,
+      format: format,
+      isPositive: balance >= 0,
+      trailing: IconButton(
+        icon: const Icon(Icons.visibility_off, color: Colors.white70),
+        onPressed: () {},
+      ),
+    );
+  }
+
+  Widget _buildSummarySection(
+    BuildContext context,
+    DashboardData data,
+    NumberFormat format,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Resumen del año ${DateTime.now().year}',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SummaryRow(
+              items: [
+                SummaryTileData(
+                  title: 'Ingresos',
+                  amount: data.yearlyIncome,
+                  icon: Icons.arrow_upward_rounded,
+                  type: SummaryTileType.income,
+                  format: format,
+                ),
+                SummaryTileData(
+                  title: 'Gastos',
+                  amount: data.yearlyExpense,
+                  icon: Icons.arrow_downward_rounded,
+                  type: SummaryTileType.expense,
+                  format: format,
+                ),
+                SummaryTileData(
+                  title: 'Balance',
+                  amount: data.yearlyBalance,
+                  icon: data.yearlyBalance >= 0
+                      ? Icons.trending_up_rounded
+                      : Icons.trending_down_rounded,
+                  type: data.yearlyBalance >= 0
+                      ? SummaryTileType.income
+                      : SummaryTileType.expense,
+                  format: format,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsSection(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<String>> quickActionsAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Accesos Rápidos',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Personalizar',
+              onPressed: () => _showQuickActionsConfig(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        quickActionsAsync.when(
+          data: (enabledActions) {
+            if (enabledActions.isEmpty) {
+              return const Center(child: Text('No hay accesos visibles.'));
+            }
+
+            final allActions = [
+              app_ui.ActionChipData(
+                icon: Icons.history,
+                label: 'Historial',
+                onTap: () => context.push('/transactions'),
+              ),
+              app_ui.ActionChipData(
+                icon: Icons.savings,
+                label: 'Metas',
+                onTap: () => context.push('/budgets'),
+              ),
+              app_ui.ActionChipData(
+                icon: Icons.people,
+                label: 'Hogar',
+                onTap: () => context.push('/household'),
+              ),
+              app_ui.ActionChipData(
+                icon: Icons.autorenew,
+                label: 'Automático',
+                onTap: () => context.push('/automation'),
+              ),
+              app_ui.ActionChipData(
+                icon: Icons.account_balance,
+                label: 'Activos',
+                onTap: () => context.push('/assets'),
+              ),
+              app_ui.ActionChipData(
+                icon: Icons.assignment,
+                label: 'Declaración',
+                onTap: () => context.push('/tax'),
+              ),
+            ];
+
+            final visibleActions = allActions
+                .where((a) => enabledActions.contains(a.label))
+                .toList();
+
+            return Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: visibleActions
+                  .map(
+                    (action) => app_ui.AppActionChip(
+                      icon: action.icon,
+                      label: action.label,
+                      onTap: action.onTap,
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text("Error: $e")),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountsSection(
+    BuildContext context,
+    DashboardData data,
+    NumberFormat format,
+    WidgetRef ref,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Mis Cuentas',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            TextButton(
+              onPressed: () => context.push('/accounts'),
+              child: const Text('Ver todas'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (data.accounts.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 48,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Aún no tienes cuentas',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Agrega una cuenta para comenzar',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...data.accounts
+              .take(5)
+              .map(
+                (acc) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: AccountTile(
+                    name: acc.name,
+                    type: acc.type,
+                    balance: acc.balance,
+                    onTap: () => context.push(
+                      '/accounts/${acc.id}/vault',
+                      extra: {'name': acc.name},
+                    ),
+                  ),
+                ),
+              ),
+      ],
     );
   }
 
@@ -480,9 +565,10 @@ class DashboardScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text("Personalizar Accesos"),
+              title: const Text('Personalizar Accesos'),
               content: SingleChildScrollView(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: allLabels.map((label) {
                     final isSelected = currentActions.contains(label);
                     return CheckboxListTile(
@@ -497,19 +583,15 @@ class DashboardScreen extends ConsumerWidget {
                           } else {
                             currentActions.remove(label);
                           }
-                          // Sort based on original list to keep order consistent
                           currentActions.sort(
                             (a, b) => allLabels
                                 .indexOf(a)
                                 .compareTo(allLabels.indexOf(b)),
                           );
-
-                          // Update provider
                           ref
                               .read(quickActionsStateProvider.notifier)
                               .setActions(currentActions);
                         });
-
                         ref
                             .read(quickActionsStateProvider.notifier)
                             .persistActions(currentActions);
@@ -526,7 +608,7 @@ class DashboardScreen extends ConsumerWidget {
                         .persistActions(currentActions);
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: const Text("Listo"),
+                  child: const Text('Listo'),
                 ),
               ],
             );
@@ -535,179 +617,4 @@ class DashboardScreen extends ConsumerWidget {
       },
     );
   }
-
-  String translationAccountType(String type) {
-    switch (type.toLowerCase()) {
-      case 'cash':
-        return 'Efectivo';
-      case 'savings':
-        return 'Ahorros';
-      case 'checking':
-        return 'Corriente'; // Though not in DB constraints, mapping just in case
-      case 'credit':
-        return 'Crédito';
-      case 'investment':
-        return 'Inversión';
-      default:
-        return type.toUpperCase();
-    }
-  }
-
-  Widget _buildBalanceCard(
-    BuildContext context,
-    double balance,
-    NumberFormat format,
-  ) {
-    return Card(
-      color: Theme.of(context).primaryColor,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'SALDO TOTAL',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              format.format(balance),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMonthlySummary(
-    BuildContext context,
-    DashboardData data,
-    NumberFormat format,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen del año',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              DateTime.now().year.toString(),
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 12),
-            _buildMonthlySummaryRow(
-              context,
-              label: 'Ingresos',
-              amount: data.yearlyIncome,
-              color: Colors.green,
-              format: format,
-            ),
-            const SizedBox(height: 8),
-            _buildMonthlySummaryRow(
-              context,
-              label: 'Gastos totales',
-              amount: data.yearlyExpense,
-              color: Colors.red,
-              format: format,
-            ),
-            const SizedBox(height: 8),
-            _buildMonthlySummaryRow(
-              context,
-              label: 'Balance del año',
-              amount: data.yearlyBalance,
-              color: data.yearlyBalance >= 0 ? Colors.blue : Colors.redAccent,
-              format: format,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMonthlySummaryRow(
-    BuildContext context, {
-    required String label,
-    required double amount,
-    required Color color,
-    required NumberFormat format,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(color: Colors.grey[700], fontSize: 14),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            format.format(amount),
-            textAlign: TextAlign.end,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickAction(
-    BuildContext context,
-    IconData icon,
-    String label,
-    Color bgColor,
-    Color iconColor,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final String route;
-
-  _QuickActionItem(this.icon, this.label, this.color, this.route);
 }

@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 
 class VaultScreen extends ConsumerStatefulWidget {
   final String accountId;
@@ -80,45 +85,40 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       body: itemsAsync.when(
         data: (items) {
           if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text("La bóveda está vacía."),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => _showAddItemDialog(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text("Agregar Ítem"),
-                  ),
-                ],
-              ),
+            return EmptyState(
+              icon: Icons.lock_outline,
+              title: 'Bóveda vacía',
+              subtitle: 'Guarda información sensible de tus cuentas',
+              actionLabel: 'Agregar Ítem',
+              onAction: () => _showAddItemDialog(context),
             );
           }
 
           final orderedItems = _applySavedOrder(items);
 
           return ReorderableListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: orderedItems.length,
             onReorder: (oldIndex, newIndex) async {
               if (newIndex > oldIndex) newIndex -= 1;
               final updated = List<dynamic>.from(orderedItems);
               final moved = updated.removeAt(oldIndex);
               updated.insert(newIndex, moved);
-              await _persistOrder(
-                updated.map((e) => e.id as String).toList(),
-              );
+              await _persistOrder(updated.map((e) => e.id as String).toList());
               ref.invalidate(vaultItemsProvider(widget.accountId));
             },
             itemBuilder: (context, index) {
               final item = orderedItems[index];
-              return _VaultItemCard(
+              return FadeSlideTransition(
                 key: ValueKey(item.id),
-                item: item,
-                accountId: widget.accountId,
+                index: index,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _VaultItemCard(
+                    item: item,
+                    accountId: widget.accountId,
+                  ),
+                ),
               );
             },
           );
@@ -145,117 +145,55 @@ class _VaultItemDialog extends ConsumerStatefulWidget {
 class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
   bool _isCard = true;
   final _titleController = TextEditingController();
-
-  // Card Fields
   final _cardNumberController = TextEditingController();
   final _cardHolderController = TextEditingController();
-  final _cardExpiryController = TextEditingController(); // MM/YY
+  final _cardExpiryController = TextEditingController();
   final _cardCvvController = TextEditingController();
-
-  // Account Fields
   final _accHolderController = TextEditingController();
   final _accTypeController = TextEditingController();
   final _accNumberController = TextEditingController();
 
   @override
+  void dispose() {
+    _titleController.dispose();
+    _cardNumberController.dispose();
+    _cardHolderController.dispose();
+    _cardExpiryController.dispose();
+    _cardCvvController.dispose();
+    _accHolderController.dispose();
+    _accTypeController.dispose();
+    _accNumberController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Nuevo Ítem en Bóveda'),
+      title: const Text('Nuevo Ítem'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment<bool>(
-                    value: true,
-                    label: Text("Tarjeta"),
-                    icon: Icon(Icons.credit_card),
-                  ),
-                  ButtonSegment<bool>(
-                    value: false,
-                    label: Text("Cuenta"),
-                    icon: Icon(Icons.account_balance),
-                  ),
-                ],
-                selected: {_isCard},
-                onSelectionChanged: (value) {
-                  setState(() => _isCard = value.first);
-                },
-              ),
-            ),
-            const Divider(),
-            if (_isCard) ...[
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Alias (ej. Visa Oro)',
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                  value: true,
+                  label: Text('Tarjeta'),
                   icon: Icon(Icons.credit_card),
                 ),
-              ),
-              TextField(
-                controller: _cardHolderController,
-                decoration: const InputDecoration(labelText: 'Nombre Titular'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              TextField(
-                controller: _cardNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'Número de Tarjeta',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _cardExpiryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Exp (MM/YY)',
-                      ),
-                      keyboardType: TextInputType.datetime,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _cardCvvController,
-                      decoration: const InputDecoration(labelText: 'CVV'),
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Banco / Alias',
+                ButtonSegment(
+                  value: false,
+                  label: Text('Cuenta'),
                   icon: Icon(Icons.account_balance),
                 ),
-              ),
-              TextField(
-                controller: _accHolderController,
-                decoration: const InputDecoration(labelText: 'Nombre Titular'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              TextField(
-                controller: _accTypeController,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo (Ahorro/Corriente)',
-                ),
-              ),
-              TextField(
-                controller: _accNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'Número de Cuenta',
-                ),
-                keyboardType: TextInputType.text, // Alphanumeric allowed
-              ),
-            ],
+              ],
+              selected: {_isCard},
+              onSelectionChanged: (value) {
+                setState(() => _isCard = value.first);
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            if (_isCard) ..._buildCardFields() else ..._buildAccountFields(),
           ],
         ),
       ),
@@ -267,6 +205,79 @@ class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
         ElevatedButton(onPressed: _save, child: const Text('Guardar')),
       ],
     );
+  }
+
+  List<Widget> _buildCardFields() {
+    return [
+      TextField(
+        controller: _titleController,
+        decoration: const InputDecoration(
+          labelText: 'Alias (ej. Visa Oro)',
+          prefixIcon: Icon(Icons.label_outline),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _cardHolderController,
+        decoration: const InputDecoration(labelText: 'Nombre Titular'),
+        textCapitalization: TextCapitalization.words,
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _cardNumberController,
+        decoration: const InputDecoration(labelText: 'Número de Tarjeta'),
+        keyboardType: TextInputType.number,
+      ),
+      const SizedBox(height: AppSpacing.md),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _cardExpiryController,
+              decoration: const InputDecoration(labelText: 'Exp (MM/YY)'),
+              keyboardType: TextInputType.datetime,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: TextField(
+              controller: _cardCvvController,
+              decoration: const InputDecoration(labelText: 'CVV'),
+              keyboardType: TextInputType.number,
+              obscureText: true,
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  List<Widget> _buildAccountFields() {
+    return [
+      TextField(
+        controller: _titleController,
+        decoration: const InputDecoration(
+          labelText: 'Banco / Alias',
+          prefixIcon: Icon(Icons.account_balance),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _accHolderController,
+        decoration: const InputDecoration(labelText: 'Nombre Titular'),
+        textCapitalization: TextCapitalization.words,
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _accTypeController,
+        decoration: const InputDecoration(labelText: 'Tipo (Ahorro/Corriente)'),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _accNumberController,
+        decoration: const InputDecoration(labelText: 'Número de Cuenta'),
+      ),
+    ];
   }
 
   Future<void> _save() async {
@@ -294,9 +305,7 @@ class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
       await ref
           .read(vaultRepositoryProvider)
           .createVaultItem(widget.accountId, title, jsonStr, _isCard);
-      ref.invalidate(
-        vaultItemsProvider(widget.accountId),
-      ); // Invalidate specific family
+      ref.invalidate(vaultItemsProvider(widget.accountId));
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -309,14 +318,10 @@ class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
 }
 
 class _VaultItemCard extends ConsumerStatefulWidget {
-  final dynamic item; // VaultItem
+  final dynamic item;
   final String accountId;
 
-  const _VaultItemCard({
-    super.key,
-    required this.item,
-    required this.accountId,
-  });
+  const _VaultItemCard({required this.item, required this.accountId});
 
   @override
   ConsumerState<_VaultItemCard> createState() => _VaultItemCardState();
@@ -335,26 +340,38 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
       data = {'raw': item.data};
     }
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
+    return AppCard(
+      style: AppCardStyle.elevated,
       child: ExpansionTile(
-        leading: Icon(
-          item.isCard ? Icons.credit_card : Icons.account_balance,
-          color: Theme.of(context).primaryColor,
+        leading: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
+          child: Icon(
+            item.isCard ? Icons.credit_card : Icons.account_balance,
+            color: AppColors.primary,
+          ),
         ),
-        title: Text(
-          item.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Text(item.title, style: Theme.of(context).textTheme.titleSmall),
+        subtitle: Text(
+          item.isCard ? 'Tarjeta' : 'Cuenta Vinculada',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
-        subtitle: Text(item.isCard ? 'Tarjeta' : 'Cuenta Vinculada'),
-        trailing: IconButton(
-          icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
-          onPressed: () => setState(() => _isObscured = !_isObscured),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(_isObscured ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _isObscured = !_isObscured),
+            ),
+            const Icon(Icons.drag_handle, color: AppColors.textMuted),
+          ],
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
                 if (item.isCard) ...[
@@ -394,16 +411,20 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
                     copyable: true,
                   ),
                 ],
-                const Divider(),
+                const SizedBox(height: AppSpacing.md),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () =>
                         _confirmDelete(context, widget.accountId, item.id),
-                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.expense,
+                      size: 20,
+                    ),
                     label: const Text(
-                      "Eliminar",
-                      style: TextStyle(color: Colors.red),
+                      'Eliminar',
+                      style: TextStyle(color: AppColors.expense),
                     ),
                   ),
                 ),
@@ -426,79 +447,80 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
     final displayValue = (isSensitive && _isObscured) ? '•••• ••••' : value;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Flexible(
-                  child: Text(
-                    displayValue,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ),
+          Row(
+            children: [
+              Text(
+                displayValue,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              ),
+              if (copyable && (!isSensitive || !_isObscured))
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.sm),
+                  child: InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: value));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Copiado"),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    child: const Icon(
+                      Icons.copy,
+                      size: 16,
+                      color: AppColors.textMuted,
                     ),
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (copyable && (!isSensitive || !_isObscured))
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: value));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Copiado"),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      child: const Icon(
-                        Icons.copy,
-                        size: 14,
-                        color: Colors.blueGrey,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, String accountId, String itemId) {
-    showDialog(
+  void _confirmDelete(
+    BuildContext context,
+    String accountId,
+    String itemId,
+  ) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Eliminar ítem"),
         content: const Text("¿Estás seguro?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text("Cancelar"),
           ),
           TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () async {
-              await ref
-                  .read(vaultRepositoryProvider)
-                  .deleteVaultItem(accountId, itemId);
-              ref.invalidate(vaultItemsProvider(accountId));
-              if (context.mounted) Navigator.pop(context);
-            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.expense),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text("Eliminar"),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      await ref
+          .read(vaultRepositoryProvider)
+          .deleteVaultItem(accountId, itemId);
+      ref.invalidate(vaultItemsProvider(accountId));
+    }
   }
 }

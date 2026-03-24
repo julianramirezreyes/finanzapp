@@ -6,6 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/balance_card.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/summary_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/transaction_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
+import 'package:finanzapp_v2/shared/ui/dialogs/confirm_dialog.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -55,110 +63,98 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           final currency = NumberFormat.currency(
             symbol: '\$',
             decimalDigits: 0,
+            locale: 'es_CO',
           );
 
           final accounts = accountsAsync.valueOrNull ?? const [];
           final accountsById = {for (final a in accounts) a.id: a};
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Month Header
-                Text(
-                  DateFormat.yMMMM('es_ES').format(_selectedDate).toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                FadeSlideTransition(child: _buildMonthHeader(context)),
+                const SizedBox(height: AppSpacing.lg),
+                FadeSlideTransition(
+                  index: 1,
+                  child: SummaryRow(
+                    items: [
+                      SummaryTileData(
+                        title: 'Ingresos',
+                        amount: summary.totalIncome,
+                        icon: Icons.arrow_upward_rounded,
+                        type: SummaryTileType.income,
+                        format: currency,
+                      ),
+                      SummaryTileData(
+                        title: 'Gastos',
+                        amount: summary.totalExpense,
+                        icon: Icons.arrow_downward_rounded,
+                        type: SummaryTileType.expense,
+                        format: currency,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Summary Cards
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Ingresos",
-                        summary.totalIncome,
-                        Colors.green,
-                        Icons.arrow_upward,
-                        currency,
+                const SizedBox(height: AppSpacing.md),
+                FadeSlideTransition(
+                  index: 2,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SummaryRow(
+                          items: [
+                            SummaryTileData(
+                              title: 'Personal',
+                              amount: summary.expensePersonal,
+                              icon: Icons.person_outline,
+                              type: SummaryTileType.expense,
+                              format: currency,
+                            ),
+                            SummaryTileData(
+                              title: 'Hogar',
+                              amount: summary.expenseHousehold,
+                              icon: Icons.home_outlined,
+                              type: SummaryTileType.neutral,
+                              format: currency,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Gastos",
-                        summary.totalExpense,
-                        Colors.red,
-                        Icons.arrow_downward,
-                        currency,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Gastos Personal",
-                        summary.expensePersonal,
-                        Colors.redAccent,
-                        Icons.person,
-                        currency,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Gastos Hogar",
-                        summary.expenseHousehold,
-                        Colors.blue,
-                        Icons.home,
-                        currency,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Movimientos",
-                        summary.movements,
-                        Colors.indigo,
-                        Icons.swap_horiz,
-                        currency,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildBalanceCard(summary.balance, currency),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-                Text(
-                  "Transacciones (${summary.count})",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-
+                const SizedBox(height: AppSpacing.md),
+                FadeSlideTransition(
+                  index: 3,
+                  child: BalanceCard(
+                    label: 'Balance del Mes',
+                    amount: summary.balance,
+                    format: currency,
+                    isPositive: summary.balance >= 0,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                FadeSlideTransition(
+                  index: 4,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Transacciones (${summary.count})',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 if (summary.transactions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Center(
-                      child: Text("No hay movimientos en este mes."),
-                    ),
+                  const EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Sin movimientos',
+                    subtitle: 'No hay transacciones este mes',
                   )
                 else
                   ListView.builder(
@@ -167,7 +163,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     itemCount: summary.transactions.length + 1,
                     itemBuilder: (context, index) {
                       if (index == summary.transactions.length) {
-                        return const SizedBox(height: 96);
+                        return const SizedBox(height: 80);
                       }
 
                       final tMap =
@@ -178,94 +174,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           ? 'Hogar'
                           : 'Personal';
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: t.type == 'income'
-                                ? Colors.green.withValues(alpha: 0.1)
-                                : Colors.red.withValues(alpha: 0.1),
-                            child: Icon(
-                              t.type == 'income'
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              color: t.type == 'income'
-                                  ? Colors.green
-                                  : Colors.red,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            t.description.isNotEmpty
-                                ? t.description
-                                : t.category,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            accountName == null
-                                ? "${DateFormat.MMMd('es_ES').format(t.date)} • $contextLabel • ${t.category}"
-                                : "${DateFormat.MMMd('es_ES').format(t.date)} • $contextLabel • ${t.category} • $accountName",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "${t.type == 'income' ? '+' : '-'} ${currency.format(t.amount)}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: t.type == 'income'
-                                      ? Colors.green
-                                      : Colors.red,
-                                ),
-                              ),
-                              PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    _editTransaction(context, t);
-                                  } else if (value == 'delete') {
-                                    _deleteTransaction(context, t.id);
-                                  }
-                                },
-                                itemBuilder: (BuildContext context) {
-                                  return [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Editar'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.delete,
-                                            size: 18,
-                                            color: Colors.red,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Eliminar',
-                                            style: TextStyle(color: Colors.red),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
+                      return FadeSlideTransition(
+                        index: 5 + index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: TransactionTile(
+                            description: t.description,
+                            category: t.category,
+                            amount: t.amount,
+                            type: t.type,
+                            date: t.date,
+                            accountName: accountName,
+                            contextLabel: contextLabel,
+                            onEdit: () => _editTransaction(context, t),
+                            onDelete: () => _deleteTransaction(context, t.id),
                           ),
                         ),
                       );
@@ -285,117 +207,81 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
+  Widget _buildMonthHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: () {
+            setState(() {
+              _selectedDate = DateTime(
+                _selectedDate.year,
+                _selectedDate.month - 1,
+              );
+            });
+          },
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+          ),
+          child: Text(
+            DateFormat.yMMMM('es_ES').format(_selectedDate).toUpperCase(),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.chevron_right),
+          onPressed:
+              _selectedDate.month < DateTime.now().month ||
+                  _selectedDate.year < DateTime.now().year
+              ? () {
+                  setState(() {
+                    _selectedDate = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month + 1,
+                    );
+                  });
+                }
+              : null,
+        ),
+      ],
+    );
+  }
+
   void _editTransaction(BuildContext context, Transaction t) {
     context.push('/transactions/add', extra: t);
   }
 
   Future<void> _deleteTransaction(BuildContext context, String id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Eliminar Transacción"),
-        content: const Text(
-          "¿Estás seguro? Esta acción revertirá el saldo de tus cuentas.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancelar"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text("Eliminar"),
-          ),
-        ],
-      ),
+    final confirmed = await DeleteConfirmDialog.show(
+      context,
+      itemName: 'esta transacción',
     );
 
     if (confirmed == true) {
       try {
         await ref.read(transactionRepositoryProvider).deleteTransaction(id);
-        // Refresh history
         ref.invalidate(personalHistoryProvider);
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text("Transacción eliminada")));
+        ).showSnackBar(const SnackBar(content: Text('Transacción eliminada')));
       } catch (e) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
-  }
-
-  // Helper Widgets (Same as PersonalHistoryScreen)
-  Widget _buildSummaryCard(
-    String title,
-    double amount,
-    Color color,
-    IconData icon,
-    NumberFormat fmt,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 8),
-          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            fmt.format(amount),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBalanceCard(double balance, NumberFormat fmt) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.indigo.shade400, Colors.indigo.shade700],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            "Balance Mensual",
-            style: TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            fmt.format(balance),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

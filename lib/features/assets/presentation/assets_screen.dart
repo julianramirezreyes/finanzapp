@@ -3,6 +3,12 @@ import 'package:finanzapp_v2/features/assets/domain/asset.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
+import 'package:finanzapp_v2/shared/ui/dialogs/confirm_dialog.dart';
 
 class AssetsScreen extends ConsumerWidget {
   const AssetsScreen({super.key});
@@ -24,68 +30,91 @@ class AssetsScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Summary Card
-              Card(
-                margin: const EdgeInsets.all(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+              FadeSlideTransition(
+                child: AppCard(
+                  margin: const EdgeInsets.all(AppSpacing.lg),
+                  style: AppCardStyle.elevated,
                   child: Column(
                     children: [
-                      const Text(
-                        "Total Activos Adicionales",
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currency.format(totalValue),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: AppColors.incomeLight,
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.buttonRadius,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.account_balance_wallet,
+                              color: AppColors.income,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total Activos',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                              Text(
+                                currency.format(totalValue),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.income,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  itemCount: assets.length,
-                  itemBuilder: (context, index) {
-                    final asset = assets[index];
-                    return ListTile(
-                      leading: Icon(
-                        asset.type == 'vehicle'
-                            ? Icons.directions_car
-                            : asset.type == 'real_estate'
-                            ? Icons.home
-                            : Icons.category,
-                      ),
-                      title: Text(asset.name),
-                      subtitle: Text(
-                        asset.isTaxable ? "Gravable" : "No Gravable",
-                        style: TextStyle(
-                          color: asset.isTaxable ? Colors.orange : Colors.grey,
+                child: assets.isEmpty
+                    ? EmptyState(
+                        icon: Icons.account_balance_outlined,
+                        title: 'Sin activos',
+                        subtitle:
+                            'Agrega tus bienes para calcular tu patrimonio',
+                        actionLabel: 'Agregar Activo',
+                        onAction: () => _showAssetDialog(context, ref),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
                         ),
+                        itemCount: assets.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == assets.length) {
+                            return const SizedBox(height: 80);
+                          }
+                          final asset = assets[index];
+                          return FadeSlideTransition(
+                            index: index,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
+                              child: _buildAssetTile(
+                                context,
+                                ref,
+                                asset,
+                                currency,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            currency.format(asset.value),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.grey),
-                            onPressed: () =>
-                                _confirmDelete(context, ref, asset),
-                          ),
-                        ],
-                      ),
-                      onTap: () => _showAssetDialog(context, ref, asset: asset),
-                    );
-                  },
-                ),
               ),
             ],
           );
@@ -100,28 +129,87 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, Asset asset) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Eliminar Activo"),
-        content: Text("¿Estás seguro de eliminar '${asset.name}'?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar"),
+  Widget _buildAssetTile(
+    BuildContext context,
+    WidgetRef ref,
+    Asset asset,
+    NumberFormat currency,
+  ) {
+    return AppCard(
+      onTap: () => _showAssetDialog(context, ref, asset: asset),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.investmentLight,
+              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            ),
+            child: Icon(
+              asset.type == 'vehicle'
+                  ? Icons.directions_car
+                  : asset.type == 'real_estate'
+                  ? Icons.home
+                  : Icons.category,
+              color: AppColors.investment,
+            ),
           ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(assetRepositoryProvider).deleteAsset(asset.id);
-              ref.invalidate(assetsListProvider);
-              if (context.mounted) Navigator.pop(ctx);
-            },
-            child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(asset.name, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: asset.isTaxable
+                        ? AppColors.warningLight
+                        : AppColors.backgroundLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.xs),
+                  ),
+                  child: Text(
+                    asset.isTaxable ? 'Gravable' : 'No Gravable',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: asset.isTaxable
+                          ? AppColors.warning
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            currency.format(asset.value),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.income,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.textMuted),
+            onPressed: () => _confirmDelete(context, ref, asset),
           ),
         ],
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Asset asset) async {
+    final confirmed = await DeleteConfirmDialog.show(
+      context,
+      itemName: asset.name,
+    );
+
+    if (confirmed == true) {
+      await ref.read(assetRepositoryProvider).deleteAsset(asset.id);
+      ref.invalidate(assetsListProvider);
+    }
   }
 
   void _showAssetDialog(BuildContext context, WidgetRef ref, {Asset? asset}) {
@@ -136,38 +224,51 @@ class AssetsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(asset == null ? "Nuevo Activo" : "Editar Activo"),
+          title: Text(asset == null ? 'Nuevo Activo' : 'Editar Activo'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: "Nombre"),
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    prefixIcon: Icon(Icons.label_outline),
+                  ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
                 TextField(
                   controller: valueController,
-                  decoration: const InputDecoration(labelText: "Valor COP"),
+                  decoration: const InputDecoration(
+                    labelText: 'Valor (COP)',
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
                   keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: type,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'vehicle', child: Text("Vehículo")),
+                    DropdownMenuItem(value: 'vehicle', child: Text('Vehículo')),
                     DropdownMenuItem(
                       value: 'real_estate',
-                      child: Text("Propiedad Raíz"),
+                      child: Text('Propiedad Raíz'),
                     ),
-                    DropdownMenuItem(value: 'other', child: Text("Otro")),
+                    DropdownMenuItem(value: 'other', child: Text('Otro')),
                   ],
                   onChanged: (v) => setState(() => type = v!),
-                  decoration: const InputDecoration(labelText: "Tipo"),
                 ),
+                const SizedBox(height: AppSpacing.lg),
                 SwitchListTile(
-                  title: const Text("Calculo UVT (Impuestos)"),
-                  subtitle: const Text("Incluir en patrimonio bruto"),
+                  title: const Text('Incluir en Patrimonio'),
+                  subtitle: const Text('Para cálculo UVT'),
                   value: isTaxable,
                   onChanged: (v) => setState(() => isTaxable = v),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ],
             ),
@@ -175,7 +276,7 @@ class AssetsScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancelar"),
+              child: const Text('Cancelar'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -196,7 +297,7 @@ class AssetsScreen extends ConsumerWidget {
                 ref.invalidate(assetsListProvider);
                 if (context.mounted) Navigator.pop(ctx);
               },
-              child: const Text("Guardar"),
+              child: const Text('Guardar'),
             ),
           ],
         ),

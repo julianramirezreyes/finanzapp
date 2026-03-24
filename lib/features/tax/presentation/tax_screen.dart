@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
+import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
+import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 
 class TaxScreen extends ConsumerStatefulWidget {
   const TaxScreen({super.key});
@@ -21,98 +25,136 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     final currencyFormat = NumberFormat.currency(
       symbol: '\$',
       decimalDigits: 0,
+      locale: 'es_CO',
     );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Declaración de Renta'),
         actions: [
-          DropdownButton<int>(
-            value: _year,
-            dropdownColor: Theme.of(context).primaryColor,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+          Container(
+            margin: const EdgeInsets.only(right: AppSpacing.md),
+            child: DropdownButton<int>(
+              value: _year,
+              dropdownColor: AppColors.primary,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              iconEnabledColor: Colors.white,
+              underline: const SizedBox(),
+              items: [2024, 2025, 2026].map((y) {
+                return DropdownMenuItem(value: y, child: Text(y.toString()));
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _year = val);
+              },
             ),
-            iconEnabledColor: Colors.white,
-            underline: const SizedBox(),
-            items: [2024, 2025, 2026].map((y) {
-              return DropdownMenuItem(value: y, child: Text(y.toString()));
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _year = val);
-            },
           ),
-          const SizedBox(width: 16),
         ],
       ),
       body: taxStatusAsync.when(
         data: (status) {
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              // Summary Card
-              Card(
-                color: status.shouldDeclare
-                    ? Colors.red.shade50
-                    : Colors.green.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Icon(
-                        status.shouldDeclare
-                            ? Icons.warning_amber
-                            : Icons.check_circle_outline,
-                        size: 48,
-                        color: status.shouldDeclare ? Colors.red : Colors.green,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        status.shouldDeclare
-                            ? "Debes Declarar Renta"
-                            : "Bajo Topes de Declaración",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: status.shouldDeclare
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text("Año gravable $_year"),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Valor UVT: ${currencyFormat.format(status.uvtValue)}",
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ],
+              FadeSlideTransition(
+                child: _buildSummaryCard(context, status, currencyFormat),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FadeSlideTransition(
+                index: 1,
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: () => context.push('/assets'),
+                    icon: const Icon(Icons.edit_note),
+                    label: const Text('Gestionar Activos'),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => context.push('/assets'),
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text("Gestionar Activos y Patrimonio"),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Categories
-              ...status.categories.map(
-                (category) =>
-                    _buildCategoryCard(context, category, currencyFormat),
-              ),
+              const SizedBox(height: AppSpacing.lg),
+              ...status.categories.asMap().entries.map((entry) {
+                return FadeSlideTransition(
+                  index: 2 + entry.key,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _buildCategoryCard(
+                      context,
+                      entry.value,
+                      currencyFormat,
+                    ),
+                  ),
+                );
+              }),
             ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(
+    BuildContext context,
+    TaxStatus status,
+    NumberFormat format,
+  ) {
+    final isDeclarable = status.shouldDeclare;
+
+    return AppCard(
+      style: AppCardStyle.elevated,
+      backgroundColor: isDeclarable
+          ? AppColors.expenseLight
+          : AppColors.incomeLight,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: (isDeclarable ? AppColors.expense : AppColors.income)
+                  .withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isDeclarable ? Icons.warning_amber : Icons.check_circle,
+              size: 40,
+              color: isDeclarable ? AppColors.expense : AppColors.income,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            isDeclarable ? 'Debes Declarar Renta' : 'Bajo Topes de Declaración',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isDeclarable ? AppColors.expense : AppColors.income,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Año gravable $_year',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+            ),
+            child: Text(
+              'UVT: ${format.format(status.uvtValue)}',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -123,80 +165,95 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     NumberFormat format,
   ) {
     final progressColor = category.percentage >= 1.0
-        ? Colors.red
+        ? AppColors.expense
         : category.percentage >= 0.75
-        ? Colors.orange
-        : Colors.green;
+        ? AppColors.warning
+        : AppColors.income;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    category.category,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  category.category,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  "${(category.percentage * 100).toStringAsFixed(1)}%",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: progressColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                ),
+                child: Text(
+                  '${(category.percentage * 100).toStringAsFixed(1)}%',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: progressColor,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.xs),
+            child: LinearProgressIndicator(
               value: category.percentage.clamp(0.0, 1.0),
-              backgroundColor: Colors.grey.shade200,
-              color: progressColor,
+              backgroundColor: progressColor.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
               minHeight: 12,
-              borderRadius: BorderRadius.circular(6),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Acumulado",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Acumulado',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    Text(
-                      format.format(category.currentValue),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    format.format(category.currentValue),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      "Tope (${category.thresholdUvt.toStringAsFixed(0)} UVT)",
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Tope (${category.thresholdUvt.toStringAsFixed(0)} UVT)',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    Text(
-                      format.format(category.thresholdValue),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    format.format(category.thresholdValue),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
