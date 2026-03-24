@@ -120,6 +120,15 @@ class AppDrawer extends ConsumerWidget {
                   '/assets',
                   null,
                 ),
+                const Divider(indent: AppSpacing.lg, endIndent: AppSpacing.lg),
+                _buildDrawerItem(
+                  context,
+                  Icons.settings_outlined,
+                  Icons.settings,
+                  'Configuración',
+                  '/settings',
+                  null,
+                ),
                 _buildDrawerItem(
                   context,
                   Icons.assignment_outlined,

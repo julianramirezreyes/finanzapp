@@ -15,6 +15,7 @@ import 'package:finanzapp_v2/features/history/presentation/personal_history_scre
 import 'package:finanzapp_v2/features/automation/presentation/recurring_payments_screen.dart';
 import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
+import 'package:finanzapp_v2/features/settings/presentation/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -97,6 +98,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/automation',
         builder: (context, state) => const RecurringPaymentsScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );
