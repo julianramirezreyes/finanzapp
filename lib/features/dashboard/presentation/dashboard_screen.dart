@@ -493,7 +493,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () => context.push('/accounts'),
-              child: const Text('Ver todas'),
+              child: const Text('Administrar'),
             ),
           ],
         ),
@@ -524,22 +524,20 @@ class DashboardScreen extends ConsumerWidget {
             ),
           )
         else
-          ...data.accounts
-              .take(5)
-              .map(
-                (acc) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AccountTile(
-                    name: acc.name,
-                    type: acc.type,
-                    balance: acc.balance,
-                    onTap: () => context.push(
-                      '/accounts/${acc.id}/vault',
-                      extra: {'name': acc.name},
-                    ),
-                  ),
+          ...data.accounts.map(
+            (acc) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: AccountTile(
+                name: acc.name,
+                type: acc.type,
+                balance: acc.balance,
+                onTap: () => context.push(
+                  '/accounts/${acc.id}/vault',
+                  extra: {'name': acc.name},
                 ),
               ),
+            ),
+          ),
       ],
     );
   }

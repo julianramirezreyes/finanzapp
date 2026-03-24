@@ -32,3 +32,35 @@ class PersonalHistorySummary {
     );
   }
 }
+
+class YearlySummary {
+  final double totalIncome;
+  final double totalExpense;
+  final double balance;
+  final double personalIncome;
+  final double personalExpense;
+  final double householdIncome;
+  final double householdExpense;
+
+  YearlySummary({
+    required this.totalIncome,
+    required this.totalExpense,
+    required this.balance,
+    required this.personalIncome,
+    required this.personalExpense,
+    required this.householdIncome,
+    required this.householdExpense,
+  });
+
+  factory YearlySummary.fromJson(Map<String, dynamic> json) {
+    return YearlySummary(
+      totalIncome: (json['total_income'] as num).toDouble(),
+      totalExpense: (json['total_expense'] as num).toDouble(),
+      balance: (json['balance'] as num).toDouble(),
+      personalIncome: (json['personal_income'] as num).toDouble(),
+      personalExpense: (json['personal_expense'] as num).toDouble(),
+      householdIncome: (json['household_income'] as num?)?.toDouble() ?? 0,
+      householdExpense: (json['household_expense'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}

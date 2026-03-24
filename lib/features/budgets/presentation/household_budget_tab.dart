@@ -493,7 +493,7 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: BudgetCard(
                     budget: b,
-                    currentAmount: 0,
+                    currentAmount: b.currentAmount,
                     onTap: () =>
                         _showEditGoalDialog(context, ref, householdId, b),
                   ),

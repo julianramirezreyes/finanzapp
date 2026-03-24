@@ -26,4 +26,16 @@ class HistoryRepository {
       throw Exception('Failed to fetch personal history: $e');
     }
   }
+
+  Future<YearlySummary> getYearlySummary({int? year}) async {
+    try {
+      final response = await _dio.get(
+        '/history/yearly-summary',
+        queryParameters: year != null ? {'year': year} : null,
+      );
+      return YearlySummary.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Failed to fetch yearly summary: $e');
+    }
+  }
 }

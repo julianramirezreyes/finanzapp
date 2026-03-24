@@ -81,10 +81,12 @@ class BudgetCard extends StatelessWidget {
     }
 
     double progress = total > 0 ? (currentAmount / total) : 0.0;
-    if (progress > 1.0) progress = 1.0;
+    final bool isExceeded = currentAmount > total;
+    final double displayProgress = progress > 1.0 ? 1.0 : progress;
 
     final color = _getColor(budget.color);
     final icon = _getIcon(budget.icon);
+    final Color alertColor = isExceeded ? AppColors.expense : color;
 
     return AppCard(
       onTap: onTap,
@@ -145,9 +147,25 @@ class BudgetCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    currency.format(currentAmount),
-                    style: AppTypography.amountSmall.copyWith(color: color),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isExceeded)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: AppColors.expense,
+                            size: 16,
+                          ),
+                        ),
+                      Text(
+                        currency.format(currentAmount),
+                        style: AppTypography.amountSmall.copyWith(
+                          color: isExceeded ? AppColors.expense : color,
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     'de ${currency.format(total)}',
@@ -160,15 +178,21 @@ class BudgetCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: progress >= 1.0
+                      color: isExceeded
+                          ? AppColors.expense.withValues(alpha: 0.15)
+                          : progress >= 1.0
                           ? AppColors.incomeLight
                           : AppColors.backgroundLight,
                       borderRadius: BorderRadius.circular(AppSpacing.xs),
                     ),
                     child: Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
+                      isExceeded
+                          ? '+${((progress - 1) * 100).toStringAsFixed(0)}%'
+                          : '${(progress * 100).toStringAsFixed(0)}%',
                       style: AppTypography.labelSmall.copyWith(
-                        color: progress >= 1.0
+                        color: isExceeded
+                            ? AppColors.expense
+                            : progress >= 1.0
                             ? AppColors.income
                             : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -183,9 +207,9 @@ class BudgetCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.xs),
             child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: color.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+              value: displayProgress,
+              backgroundColor: alertColor.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(alertColor),
               minHeight: 8,
             ),
           ),
