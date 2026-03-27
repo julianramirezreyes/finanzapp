@@ -2,11 +2,17 @@
 
 **FinanzApp v2** es una solución integral para la gestión de finanzas personales y del hogar, diseñada para ofrecer control total, transparencia y automatización. Construida con una arquitectura moderna y escalable, combina la flexibilidad de Flutter con la robustez de Go (Golang).
 
-<img width="499" height="895" alt="image" src="https://github.com/user-attachments/assets/97e29fcd-1bfd-4823-8995-1ec3efb07fbc" />
-<img width="499" height="895" alt="image" src="https://github.com/user-attachments/assets/ec46b0c5-23e6-4118-b800-09112f811420" />
-<img width="499" height="895" alt="image" src="https://github.com/user-attachments/assets/df651984-1f14-44d1-9ce9-c1709b503dcc" />
-<img width="499" height="895" alt="image" src="https://github.com/user-attachments/assets/44164a85-5857-41aa-9ab8-34ac61814413" />
-<img width="499" height="895" alt="image" src="https://github.com/user-attachments/assets/57395b2a-b48f-4fdf-be82-afa54ed0abf9" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/97e29fcd-1bfd-4823-8995-1ec3efb07fbc" width="250"/>
+  <img src="https://github.com/user-attachments/assets/ec46b0c5-23e6-4118-b800-09112f811420" width="250"/>
+  <img src="https://github.com/user-attachments/assets/df651984-1f14-44d1-9ce9-c1709b503dcc" width="250"/>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/44164a85-5857-41aa-9ab8-34ac61814413" width="250"/>
+  <img src="https://github.com/user-attachments/assets/57395b2a-b48f-4fdf-be82-afa54ed0abf9" width="250"/>
+</p>
+
 
 ---
 
