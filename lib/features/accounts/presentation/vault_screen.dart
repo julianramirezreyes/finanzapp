@@ -50,6 +50,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     });
   }
 
+  Future<void> _saveOrder(List<dynamic> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = items.map((item) => item.id as String).toList();
+    await prefs.setStringList(_orderKey, ids);
+    if (!mounted) return;
+    setState(() {
+      _savedOrder = ids;
+    });
+  }
+
   void _showAddItemDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -108,37 +118,61 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
           final orderedItems = _applySavedOrder(items);
 
-          return ListView(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              // Sección de bolsillos primero
-              _buildPocketsSection(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPocketsSection(),
 
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(),
-              const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
+                const Divider(),
+                const SizedBox(height: AppSpacing.md),
 
-              if (hasCreditCards) _buildDebtPanel(debtAsync, isDark),
+                if (hasCreditCards) _buildDebtPanel(debtAsync, isDark),
 
-              const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
-              // Lista de items (tarjetas/cuentas)
-              ...orderedItems.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                return FadeSlideTransition(
-                  key: ValueKey(item.id),
-                  index: index,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: _VaultItemCard(
-                      item: item,
-                      accountId: widget.accountId,
-                    ),
+                Text(
+                  'Tarjetas y Cuentas',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
-                );
-              }),
-            ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: orderedItems.length,
+                  onReorder: (oldIndex, newIndex) {
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
+                    }
+                    final reordered = List<dynamic>.from(orderedItems);
+                    final item = reordered.removeAt(oldIndex);
+                    reordered.insert(newIndex, item);
+                    _saveOrder(reordered);
+                  },
+                  itemBuilder: (context, index) {
+                    final item = orderedItems[index];
+                    return FadeSlideTransition(
+                      key: ValueKey(item.id),
+                      index: index,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: _VaultItemCard(
+                          item: item,
+                          accountId: widget.accountId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

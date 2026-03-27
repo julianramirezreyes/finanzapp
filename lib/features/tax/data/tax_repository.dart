@@ -30,4 +30,12 @@ class TaxRepository {
       throw Exception('Failed to fetch tax status: $e');
     }
   }
+
+  Future<void> updateUvtValue(int year, double newValue) async {
+    try {
+      await _dio.put('/tax/uvt', data: {'year': year, 'uvt_value': newValue});
+    } catch (e) {
+      throw Exception('Failed to update UVT value: $e');
+    }
+  }
 }

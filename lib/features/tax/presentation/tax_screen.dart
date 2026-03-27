@@ -138,20 +138,34 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
             ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-            ),
-            child: Text(
-              'UVT: ${format.format(status.uvtValue)}',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          GestureDetector(
+            onTap: () =>
+                _showEditUvtDialog(context, ref, status.uvtValue, _year),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'UVT: ${format.format(status.uvtValue)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(Icons.edit, size: 16, color: AppColors.primary),
+                ],
+              ),
             ),
           ),
         ],
@@ -252,6 +266,78 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                 ],
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditUvtDialog(
+    BuildContext context,
+    WidgetRef ref,
+    double currentValue,
+    int year,
+  ) {
+    final controller = TextEditingController(
+      text: currentValue.toStringAsFixed(0),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Editar Valor UVT'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Año: $year',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Valor UVT',
+                prefixIcon: Icon(Icons.attach_money),
+                hintText: 'Ej: 52000',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newValue = double.tryParse(controller.text);
+              if (newValue == null || newValue <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ingrese un valor válido')),
+                );
+                return;
+              }
+
+              try {
+                await ref
+                    .read(taxRepositoryProvider)
+                    .updateUvtValue(year, newValue);
+                ref.invalidate(taxStatusProvider(year));
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al guardar: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Guardar'),
           ),
         ],
       ),
