@@ -1,14 +1,17 @@
 import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
+import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/account_with_pockets_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
+import 'package:intl/intl.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -46,12 +49,11 @@ class AccountsScreen extends ConsumerWidget {
                     index: index,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: AccountTile(
-                        name: acc.name,
-                        type: acc.type,
-                        balance: acc.balance,
+                      child: _AccountTileWithPockets(
+                        account: acc,
                         showDragHandle: true,
                         onTap: () => _showEditDialog(context, ref, acc),
+                        onLongPress: (ctx) => _showPocketsDialog(ctx, ref, acc),
                       ),
                     ),
                   );
@@ -181,6 +183,10 @@ class AccountsScreen extends ConsumerWidget {
     final nameController = TextEditingController(text: account.name);
     String selectedType = account.type;
     bool includeInNetWorth = account.includeInNetWorth;
+    int? cutoffDay = account.cutoffDay;
+    final cutoffController = TextEditingController(
+      text: cutoffDay?.toString() ?? '',
+    );
 
     showDialog(
       context: context,
@@ -227,6 +233,27 @@ class AccountsScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
+              // Mostrar campo de fecha de corte solo para cuentas de crédito
+              if (selectedType == 'credit') ...[
+                TextField(
+                  controller: cutoffController,
+                  decoration: const InputDecoration(
+                    labelText: 'Día de corte (1-31)',
+                    prefixIcon: Icon(Icons.calendar_today),
+                    hintText: 'Ej: 20',
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    final day = int.tryParse(value);
+                    if (day != null && day >= 1 && day <= 31) {
+                      cutoffDay = day;
+                    } else if (value.isEmpty) {
+                      cutoffDay = null;
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               SwitchListTile(
                 title: const Text('Incluir en Patrimonio'),
                 value: includeInNetWorth,
@@ -319,6 +346,7 @@ class AccountsScreen extends ConsumerWidget {
                     currency: account.currency,
                     includeInNetWorth: includeInNetWorth,
                     displayOrder: account.displayOrder,
+                    cutoffDay: selectedType == 'credit' ? cutoffDay : null,
                   );
 
                   await ref
@@ -338,6 +366,17 @@ class AccountsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPocketsDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Account account,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => _PocketsDialog(account: account),
     );
   }
 
@@ -373,5 +412,349 @@ class AccountsScreen extends ConsumerWidget {
       default:
         return Icons.account_balance_wallet;
     }
+  }
+}
+
+// Widget que muestra la cuenta con sus bolsillos
+class _AccountTileWithPockets extends ConsumerWidget {
+  final Account account;
+  final bool showDragHandle;
+  final VoidCallback? onTap;
+  final void Function(BuildContext context)? onLongPress;
+
+  const _AccountTileWithPockets({
+    required this.account,
+    this.showDragHandle = false,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pocketsAsync = ref.watch(pocketsProvider(account.id));
+
+    return pocketsAsync.when(
+      data: (pockets) {
+        final pocketsTotal = pockets.fold<double>(
+          0,
+          (sum, p) => sum + p.balance,
+        );
+        final totalValue = account.balance + pocketsTotal;
+
+        return AccountWithPocketsTile(
+          name: account.name,
+          type: account.type,
+          balance: account.balance,
+          totalValue: totalValue,
+          pocketsCount: pockets.length,
+          pocketsTotal: pocketsTotal,
+          showDragHandle: showDragHandle,
+          onTap: onTap,
+          onLongPress: onLongPress != null ? () => onLongPress!(context) : null,
+        );
+      },
+      loading: () => AccountTile(
+        name: account.name,
+        type: account.type,
+        balance: account.balance,
+        showDragHandle: showDragHandle,
+        onTap: onTap,
+      ),
+      error: (e, s) => AccountTile(
+        name: account.name,
+        type: account.type,
+        balance: account.balance,
+        showDragHandle: showDragHandle,
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+// Dialog para gestionar bolsillos de una cuenta
+class _PocketsDialog extends ConsumerWidget {
+  final Account account;
+
+  const _PocketsDialog({required this.account});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pocketsAsync = ref.watch(pocketsProvider(account.id));
+    final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.savings, color: AppColors.info),
+          const SizedBox(width: AppSpacing.sm),
+          Text('Bolsillos: ${account.name}'),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 300,
+        child: pocketsAsync.when(
+          data: (pockets) {
+            if (pockets.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.savings_outlined,
+                      size: 48,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Sin bolsillos',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Agrega un bolsillo para separar dinero',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              shrinkWrap: true,
+              itemCount: pockets.length,
+              itemBuilder: (context, index) {
+                final pocket = pockets[index];
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primarySurface,
+                      child: Icon(
+                        Icons.savings,
+                        color: AppColors.info,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(pocket.name),
+                    subtitle: Text(currency.format(pocket.balance)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.add_circle_outline,
+                            color: AppColors.income,
+                          ),
+                          onPressed: () =>
+                              _showAmountDialog(context, ref, pocket.id, true),
+                          tooltip: 'Agregar',
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove_circle_outline,
+                            color: AppColors.expense,
+                          ),
+                          onPressed: () =>
+                              _showAmountDialog(context, ref, pocket.id, false),
+                          tooltip: 'Sacar',
+                        ),
+                      ],
+                    ),
+                    onLongPress: () => _confirmDeletePocket(
+                      context,
+                      ref,
+                      pocket.id,
+                      pocket.name,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar'),
+        ),
+        ElevatedButton.icon(
+          onPressed: () => _showCreatePocketDialog(context, ref),
+          icon: const Icon(Icons.add),
+          label: const Text('Agregar Bolsillo'),
+        ),
+      ],
+    );
+  }
+
+  void _showCreatePocketDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final balanceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nuevo Bolsillo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del bolsillo',
+                hintText: 'ej: Ahorro Viaje',
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: balanceController,
+              decoration: const InputDecoration(
+                labelText: 'Balance inicial (opcional)',
+                prefixIcon: Icon(Icons.attach_money),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+
+              final initialBalance =
+                  double.tryParse(balanceController.text) ?? 0;
+
+              try {
+                await ref
+                    .read(pocketRepositoryProvider)
+                    .createPocket(account.id, name, initialBalance);
+                ref.invalidate(pocketsProvider(account.id));
+                ref.invalidate(accountsListProvider);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAmountDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String pocketId,
+    bool isDeposit,
+  ) {
+    final amountController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isDeposit ? 'Agregar dinero' : 'Sacar dinero'),
+        content: TextField(
+          controller: amountController,
+          decoration: const InputDecoration(
+            labelText: 'Monto',
+            prefixIcon: Icon(Icons.attach_money),
+          ),
+          keyboardType: TextInputType.number,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountController.text);
+              if (amount == null || amount <= 0) return;
+
+              try {
+                if (isDeposit) {
+                  await ref
+                      .read(pocketRepositoryProvider)
+                      .deposit(account.id, pocketId, amount);
+                } else {
+                  await ref
+                      .read(pocketRepositoryProvider)
+                      .withdraw(account.id, pocketId, amount);
+                }
+                ref.invalidate(pocketsProvider(account.id));
+                ref.invalidate(accountsListProvider);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: Text(isDeposit ? 'Agregar' : 'Sacar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeletePocket(
+    BuildContext context,
+    WidgetRef ref,
+    String pocketId,
+    String pocketName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar bolsillo'),
+        content: Text('¿Eliminar "$pocketName"? Se perderá el saldo.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.expense),
+            onPressed: () async {
+              try {
+                await ref
+                    .read(pocketRepositoryProvider)
+                    .deletePocket(account.id, pocketId);
+                ref.invalidate(pocketsProvider(account.id));
+                ref.invalidate(accountsListProvider);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
   }
 }

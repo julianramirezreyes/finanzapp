@@ -28,7 +28,7 @@ class BackendConfig {
 
   const BackendConfig({
     this.mode = BackendMode.online,
-    this.localUrl = 'http://192.168.1.10:8080',
+    this.localUrl = 'http://192.168.40.124:8081',
   });
 
   static const String kProdUrl =

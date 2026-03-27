@@ -1,6 +1,8 @@
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
+import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
+import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:finanzapp_v2/features/dashboard/data/dashboard_provider.dart';
@@ -36,8 +38,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String _context = 'personal';
   String? _accountId;
   String? _destinationAccountId;
+  String? _pocketId;
   bool _excludeFromBalance = false;
   bool _paidWithCreditCard = false;
+  bool _payingCreditCard = false; // Nueva opción: pagar deuda de TC
+  String? _creditCardAccountId; // Selected credit card ID
+  int _installments = 1;
 
   String? _selectionValue;
 
@@ -117,7 +123,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: EdgeInsets.only(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              top: AppSpacing.lg,
+              bottom:
+                  MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxxl,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -141,6 +153,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   const SizedBox(height: AppSpacing.lg),
                   _buildExcludeFromBalanceSwitch(isDark),
                   if (_type == 'expense') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    _buildPayCreditCardDebtSwitch(isDark),
                     const SizedBox(height: AppSpacing.sm),
                     _buildCreditCardSwitch(isDark),
                   ],
@@ -399,6 +413,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     key: ValueKey(_context),
                     value: _context,
                     isExpanded: true,
+                    isDense: true,
                     items: const [
                       DropdownMenuItem(
                         value: 'personal',
@@ -421,12 +436,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                       ),
                     ],
-                    onChanged: (v) {
-                      setState(() {
-                        _context = v!;
-                        _selectionValue = null;
-                      });
-                    },
+                    onChanged: _paidWithCreditCard
+                        ? null
+                        : (v) {
+                            setState(() {
+                              _context = v!;
+                              _selectionValue = null;
+                            });
+                          },
                   ),
                 ),
               ),
@@ -474,12 +491,43 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ]);
         } else {
           if (budgets.isNotEmpty) {
+            final currency = NumberFormat.currency(
+              symbol: '\$',
+              decimalDigits: 0,
+            );
+
             for (var b in budgets) {
+              // Mostrar progreso solo para contexto personal
+              String subtitle = '';
+              if (_context == 'personal' && b.monthlyQuota > 0) {
+                final double spent = b.currentAmount;
+                final double limit = b.monthlyQuota;
+                final double available = limit - spent;
+                final int percentage = limit > 0
+                    ? ((spent / limit) * 100).round()
+                    : 0;
+                subtitle =
+                    '$percentage% - ${currency.format(available)} libres';
+              } else {
+                subtitle = b.isRecurrent ? 'Fijo' : 'Meta';
+              }
+
               items.add(
                 DropdownMenuItem(
                   value: "budget:${b.id}",
-                  child: Text(
-                    "${b.category} (${b.isRecurrent ? 'Fijo' : 'Meta'})",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(b.category, style: const TextStyle(fontSize: 14)),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -528,7 +576,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
@@ -539,8 +588,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   key: ValueKey("cat_$_context$_type"),
                   value: _selectionValue,
                   isExpanded: true,
+                  isDense: true,
                   items: items,
-                  onChanged: (v) => setState(() => _selectionValue = v),
+                  onChanged: _paidWithCreditCard || _creditCardAccountId != null
+                      ? null
+                      : (v) => setState(() => _selectionValue = v),
                 ),
               ),
             ),
@@ -590,7 +642,24 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _accountId = v),
+              onChanged: (v) => setState(() {
+                _accountId = v;
+                // Limpiar selección de TC si no pertenece a la nueva cuenta
+                if (_creditCardAccountId != null && v != null) {
+                  final creditCardsAsync = ref.read(allCreditCardsProvider);
+                  final allCreditCards = creditCardsAsync.maybeWhen(
+                    data: (cards) => cards,
+                    orElse: () => <dynamic>[],
+                  );
+                  final cardBelongsToNewAccount = allCreditCards.any(
+                    (card) =>
+                        card.id == _creditCardAccountId && card.accountId == v,
+                  );
+                  if (!cardBelongsToNewAccount) {
+                    _creditCardAccountId = null;
+                  }
+                }
+              }),
             ),
           ),
         ),
@@ -602,6 +671,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     List<dynamic> accounts,
     NumberFormat currency,
   ) {
+    final pocketsAsync = _accountId != null
+        ? ref.watch(pocketsProvider(_accountId!))
+        : const AsyncValue<List<dynamic>>.data([]);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -640,10 +713,64 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _destinationAccountId = v),
+              onChanged: (v) => setState(() {
+                _destinationAccountId = v;
+                _pocketId = null;
+              }),
             ),
           ),
         ),
+        if (_destinationAccountId != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Bolsillo (opcional)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Transferir a un bolsillo específico',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: _pocketId,
+                isExpanded: true,
+                hint: const Text('Sin bolsillo'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Sin bolsillo'),
+                  ),
+                  ...pocketsAsync.when(
+                    data: (pockets) => pockets.map(
+                      (p) => DropdownMenuItem<String?>(
+                        value: p.id as String,
+                        child: Text(
+                          '${p.name} (${currency.format(p.balance)})',
+                        ),
+                      ),
+                    ),
+                    loading: () => [],
+                    error: (e, s) => [],
+                  ),
+                ],
+                onChanged: (v) => setState(() => _pocketId = v),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -700,7 +827,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Widget _buildCreditCardSwitch(bool isDark) {
+  Widget _buildPayCreditCardDebtSwitch(bool isDark) {
+    final creditCardsAsync = ref.watch(allCreditCardsProvider);
+    final allCreditCards = creditCardsAsync.maybeWhen(
+      data: (cards) => cards,
+      orElse: () => <dynamic>[],
+    );
+
+    // Filtrar tarjetas según la cuenta seleccionada
+    final filteredCreditCards = _accountId != null
+        ? allCreditCards.where((card) => card.accountId == _accountId).toList()
+        : allCreditCards;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -708,48 +846,263 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(color: AppColors.borderLight),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: AppColors.infoLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.credit_card, color: AppColors.info, size: 20),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pagado con Tarjeta de Crédito',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.warningLight,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  'No descuenta saldo del banco',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                child: Icon(
+                  Icons.credit_card,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pagar Tarjeta de Crédito',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Descarta saldo, registra como pago de deuda',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _payingCreditCard,
+                onChanged: (bool value) {
+                  setState(() {
+                    _payingCreditCard = value;
+                    if (_payingCreditCard) {
+                      _paidWithCreditCard = false;
+                      _excludeFromBalance = false;
+                      if (filteredCreditCards.isNotEmpty) {
+                        _creditCardAccountId = filteredCreditCards.first.id;
+                      }
+                    } else {
+                      _creditCardAccountId = null;
+                    }
+                  });
+                },
+                activeTrackColor: AppColors.warning,
+                thumbColor: WidgetStateProperty.all(Colors.white),
+              ),
+            ],
+          ),
+          if (_payingCreditCard && filteredCreditCards.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundLight,
+                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  key: ValueKey('pay_tc_select_$_creditCardAccountId'),
+                  value: _creditCardAccountId,
+                  isExpanded: true,
+                  hint: const Text('Seleccionar tarjeta'),
+                  items: filteredCreditCards.map<DropdownMenuItem<String>>((
+                    card,
+                  ) {
+                    final debt = card.totalDebt;
+                    final debtStr = NumberFormat.currency(
+                      symbol: '\$',
+                      decimalDigits: 0,
+                    ).format(debt);
+                    return DropdownMenuItem<String>(
+                      value: card.id,
+                      child: Text('${card.title} ($debtStr)'),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    setState(() {
+                      _creditCardAccountId = value;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditCardSwitch(bool isDark) {
+    final filteredCreditCardsAsync = ref.watch(allCreditCardsProvider);
+    final allCreditCards = filteredCreditCardsAsync.maybeWhen(
+      data: (cards) => cards,
+      orElse: () => <dynamic>[],
+    );
+
+    // Filtrar tarjetas según la cuenta seleccionada
+    final filteredCreditCards = _accountId != null
+        ? allCreditCards.where((card) => card.accountId == _accountId).toList()
+        : allCreditCards;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.infoLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.credit_card, color: AppColors.info, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pagado con Tarjeta de Crédito',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'No descuenta saldo, cuenta para DIAN',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _paidWithCreditCard,
+                onChanged: (bool value) {
+                  setState(() {
+                    _paidWithCreditCard = value;
+                    if (_paidWithCreditCard) {
+                      _payingCreditCard = false;
+                      _excludeFromBalance = true;
+                      if (filteredCreditCards.isNotEmpty) {
+                        _creditCardAccountId = filteredCreditCards.first.id;
+                      }
+                      _selectionValue = 'static:Gasto general';
+                    } else {
+                      _creditCardAccountId = null;
+                      _selectionValue = null;
+                    }
+                  });
+                },
+                activeTrackColor: AppColors.primary,
+                thumbColor: WidgetStateProperty.all(Colors.white),
+              ),
+            ],
+          ),
+          if (_paidWithCreditCard && filteredCreditCards.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundLight,
+                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  key: ValueKey('tc_select_$_creditCardAccountId'),
+                  value: _creditCardAccountId,
+                  isExpanded: true,
+                  hint: const Text('Seleccionar tarjeta'),
+                  items: filteredCreditCards.map<DropdownMenuItem<String>>((
+                    card,
+                  ) {
+                    final debt = card.totalDebt;
+                    final debtStr = NumberFormat.currency(
+                      symbol: '\$',
+                      decimalDigits: 0,
+                    ).format(debt);
+                    return DropdownMenuItem<String>(
+                      value: card.id,
+                      child: Text('${card.title} ($debtStr)'),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    setState(() {
+                      _creditCardAccountId = value;
+                      // Auto-seleccionar la cuenta de la tarjeta
+                      if (value != null) {
+                        final selectedCard = filteredCreditCards.firstWhere(
+                          (c) => c.id == value,
+                          orElse: () => filteredCreditCards.first,
+                        );
+                        _accountId = selectedCard.accountId;
+                      }
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+          if (_paidWithCreditCard && _creditCardAccountId != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Text('Cuotas: '),
+                const SizedBox(width: AppSpacing.sm),
+                DropdownButton<int>(
+                  value: _installments,
+                  items: List.generate(24, (i) => i + 1)
+                      .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                      .toList(),
+                  onChanged: (v) => setState(() => _installments = v ?? 1),
                 ),
               ],
             ),
-          ),
-          Switch(
-            value: _paidWithCreditCard,
-            onChanged: (bool value) {
-              setState(() {
-                _paidWithCreditCard = value;
-                if (_paidWithCreditCard) {
-                  _excludeFromBalance = true;
-                }
-              });
-            },
-            activeTrackColor: AppColors.primary,
-            thumbColor: WidgetStateProperty.all(Colors.white),
-          ),
+          ],
+          if (_paidWithCreditCard && filteredCreditCards.isEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'No hay tarjetas de crédito registradas en la bóveda',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.warning,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -880,6 +1233,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             householdId: finalHouseholdId,
             budgetId: finalBudgetId,
             destinationAccountId: _destinationAccountId,
+            pocketId: _pocketId,
             userId: t.userId,
             excludeFromBalance: _excludeFromBalance,
             paidWithCreditCard: _type == 'expense'
@@ -909,10 +1263,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 householdId: finalHouseholdId,
                 budgetId: finalBudgetId,
                 destinationAccountId: _destinationAccountId,
+                pocketId: _pocketId,
                 excludeFromBalance: _excludeFromBalance,
                 paidWithCreditCard: _type == 'expense'
                     ? _paidWithCreditCard
                     : false,
+                creditCardAccountId: null,
+                vaultCardId:
+                    _type == 'expense' &&
+                        (_paidWithCreditCard || _payingCreditCard)
+                    ? _creditCardAccountId
+                    : null,
+                installments: _paidWithCreditCard || _payingCreditCard
+                    ? _installments
+                    : 1,
               );
           if (mounted) {
             ScaffoldMessenger.of(

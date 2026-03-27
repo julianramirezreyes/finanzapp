@@ -8,12 +8,6 @@
       "languageVersion": "3.9"
     },
     {
-      "name": "adaptive_number",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/adaptive_number-1.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "analyzer",
       "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/analyzer-10.0.1",
       "packageUri": "lib/",
@@ -21,9 +15,9 @@
     },
     {
       "name": "app_links",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/app_links-6.4.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/app_links-7.0.0",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "3.10"
     },
     {
       "name": "app_links_linux",
@@ -57,7 +51,7 @@
     },
     {
       "name": "async",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/async-2.13.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/async-2.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -69,13 +63,13 @@
     },
     {
       "name": "build",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build-4.0.4",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build-4.0.5",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
       "name": "build_config",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build_config-1.2.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build_config-1.3.0",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -87,7 +81,7 @@
     },
     {
       "name": "build_runner",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build_runner-2.11.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/build_runner-2.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -99,7 +93,7 @@
     },
     {
       "name": "built_value",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/built_value-8.12.3",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/built_value-8.12.5",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -159,39 +153,33 @@
     },
     {
       "name": "cupertino_icons",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/cupertino_icons-1.0.8",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/cupertino_icons-1.0.9",
       "packageUri": "lib/",
-      "languageVersion": "3.1"
+      "languageVersion": "3.9"
     },
     {
       "name": "dart_jsonwebtoken",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dart_jsonwebtoken-3.3.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dart_jsonwebtoken-3.4.0",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
     {
       "name": "dart_style",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dart_style-3.1.5",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dart_style-3.1.7",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "dio",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dio-5.9.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dio-5.9.2",
       "packageUri": "lib/",
       "languageVersion": "2.18"
     },
     {
       "name": "dio_web_adapter",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dio_web_adapter-2.1.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/dio_web_adapter-2.1.2",
       "packageUri": "lib/",
       "languageVersion": "3.3"
-    },
-    {
-      "name": "ed25519_edwards",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/ed25519_edwards-0.3.1",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
     },
     {
       "name": "equatable",
@@ -225,7 +213,7 @@
     },
     {
       "name": "fl_chart",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/fl_chart-1.1.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/fl_chart-1.2.0",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
@@ -327,13 +315,13 @@
     },
     {
       "name": "google_fonts",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/google_fonts-8.0.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/google_fonts-8.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "gotrue",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/gotrue-2.18.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/gotrue-2.19.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
@@ -351,9 +339,9 @@
     },
     {
       "name": "hooks",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/hooks-1.0.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/hooks-1.0.2",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "http",
@@ -393,19 +381,13 @@
     },
     {
       "name": "json_annotation",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/json_annotation-4.10.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/json_annotation-4.11.0",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
-      "name": "json_schema",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/json_schema-5.2.2",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "json_serializable",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/json_serializable-6.12.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/json_serializable-6.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -471,9 +453,9 @@
     },
     {
       "name": "native_toolchain_c",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/native_toolchain_c-0.17.4",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/native_toolchain_c-0.17.6",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "objective_c",
@@ -501,7 +483,7 @@
     },
     {
       "name": "path_provider_android",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/path_provider_android-2.2.22",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/path_provider_android-2.2.23",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -584,26 +566,14 @@
       "languageVersion": "3.6"
     },
     {
-      "name": "quiver",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/quiver-3.2.2",
-      "packageUri": "lib/",
-      "languageVersion": "2.17"
-    },
-    {
       "name": "realtime_client",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/realtime_client-2.7.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/realtime_client-2.7.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
     {
       "name": "retry",
       "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/retry-3.1.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "rfc_6901",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/rfc_6901-0.2.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -621,13 +591,13 @@
     },
     {
       "name": "shared_preferences",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences-2.5.4",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences-2.5.5",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "shared_preferences_android",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.20",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -645,9 +615,9 @@
     },
     {
       "name": "shared_preferences_platform_interface",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.2",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.9"
     },
     {
       "name": "shared_preferences_web",
@@ -681,13 +651,13 @@
     },
     {
       "name": "source_gen",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/source_gen-4.2.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/source_gen-4.2.2",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.9"
     },
     {
       "name": "source_helper",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/source_helper-1.3.10",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/source_helper-1.3.11",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -711,7 +681,7 @@
     },
     {
       "name": "storage_client",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/storage_client-2.4.1",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/storage_client-2.5.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -735,13 +705,13 @@
     },
     {
       "name": "supabase",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/supabase-2.10.2",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/supabase-2.10.4",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
     {
       "name": "supabase_flutter",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/supabase_flutter-2.12.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/supabase_flutter-2.12.2",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
@@ -764,12 +734,6 @@
       "languageVersion": "3.5"
     },
     {
-      "name": "uri",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/uri-1.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "url_launcher",
       "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/url_launcher-6.3.2",
       "packageUri": "lib/",
@@ -777,13 +741,13 @@
     },
     {
       "name": "url_launcher_android",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.28",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.29",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "url_launcher_ios",
-      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/url_launcher_ios-6.4.0",
+      "rootUri": "file:///home/julian/.pub-cache/hosted/pub.dev/url_launcher_ios-6.4.1",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },

@@ -60,8 +60,12 @@ class TransactionRepository {
     String? householdId,
     String? budgetId,
     String? destinationAccountId,
+    String? pocketId,
     bool excludeFromBalance = false,
     bool paidWithCreditCard = false,
+    String? creditCardAccountId,
+    String? vaultCardId,
+    int installments = 1,
   }) async {
     try {
       final payload = {
@@ -88,6 +92,20 @@ class TransactionRepository {
         payload['destination_account_id'] = destinationAccountId;
       }
 
+      if (pocketId != null) {
+        payload['pocket_id'] = pocketId;
+      }
+
+      if (creditCardAccountId != null) {
+        payload['credit_card_account_id'] = creditCardAccountId;
+      }
+
+      if (vaultCardId != null) {
+        payload['vault_card_id'] = vaultCardId;
+      }
+
+      payload['installments'] = installments;
+
       await _dio.post('/transactions', data: payload);
     } catch (e) {
       throw Exception('Failed to create transaction: $e');
@@ -113,6 +131,30 @@ class TransactionRepository {
       await _dio.delete('/transactions/$id');
     } catch (e) {
       throw Exception('Error deleting transaction: $e');
+    }
+  }
+
+  // Pay credit card - creates income transaction that reduces debt
+  Future<void> payCreditCard({
+    required String creditCardAccountId,
+    required double amount,
+    required String accountId,
+    required DateTime date,
+    String? description,
+  }) async {
+    try {
+      await _dio.post(
+        '/transactions/pay-credit',
+        data: {
+          'credit_card_account_id': creditCardAccountId,
+          'amount': amount,
+          'account_id': accountId,
+          'date': date.toUtc().toIso8601String(),
+          'description': description ?? 'Pago Tarjeta de Crédito',
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to pay credit card: $e');
     }
   }
 }

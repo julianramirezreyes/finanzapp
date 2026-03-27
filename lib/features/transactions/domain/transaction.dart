@@ -11,6 +11,7 @@ class Transaction {
   final String? householdId;
   final String? budgetId;
   final String? destinationAccountId;
+  final String? pocketId;
   final String userId;
   final bool excludeFromBalance;
   final bool paidWithCreditCard;
@@ -27,6 +28,7 @@ class Transaction {
     this.householdId,
     this.budgetId,
     this.destinationAccountId,
+    this.pocketId,
     required this.userId,
     this.excludeFromBalance = false,
     this.paidWithCreditCard = false,
@@ -45,9 +47,8 @@ class Transaction {
       householdId: json['household_id'],
       budgetId: json['budget_id'],
       destinationAccountId: json['destination_account_id'],
-      userId:
-          json['user_id'] ??
-          '', // Handle potential missing user_id if logic allows, usually required
+      pocketId: json['pocket_id'],
+      userId: json['user_id'] ?? '',
       excludeFromBalance: json['exclude_from_balance'] ?? false,
       paidWithCreditCard: json['paid_with_credit_card'] ?? false,
     );
@@ -66,6 +67,7 @@ class Transaction {
       'household_id': householdId,
       'budget_id': budgetId,
       'destination_account_id': destinationAccountId,
+      'pocket_id': pocketId,
       'exclude_from_balance': excludeFromBalance,
       'paid_with_credit_card': paidWithCreditCard,
     };
@@ -89,6 +91,7 @@ class Transaction {
     String? householdId,
     String? budgetId,
     String? destinationAccountId,
+    String? pocketId,
     String? userId,
     bool? excludeFromBalance,
     bool? paidWithCreditCard,
@@ -105,6 +108,7 @@ class Transaction {
       householdId: householdId ?? this.householdId,
       budgetId: budgetId ?? this.budgetId,
       destinationAccountId: destinationAccountId ?? this.destinationAccountId,
+      pocketId: pocketId ?? this.pocketId,
       userId: userId ?? this.userId,
       excludeFromBalance: excludeFromBalance ?? this.excludeFromBalance,
       paidWithCreditCard: paidWithCreditCard ?? this.paidWithCreditCard,

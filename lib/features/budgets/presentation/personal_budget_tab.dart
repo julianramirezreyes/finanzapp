@@ -3,6 +3,8 @@ import 'package:finanzapp_v2/features/budgets/data/budget_config_repository.dart
 import 'package:finanzapp_v2/features/budgets/data/budget_repository.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget_config.dart';
+import 'package:finanzapp_v2/features/household/data/household_provider.dart';
+import 'package:finanzapp_v2/features/auth/presentation/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
@@ -10,6 +12,7 @@ import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 
 class PersonalBudgetTab extends ConsumerStatefulWidget {
@@ -79,6 +82,8 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     final configAsync = ref.watch(
       budgetConfigProvider((type: 'personal', householdId: null)),
     );
+    final currentUser = ref.watch(userProvider);
+    final householdAsync = ref.watch(householdProvider);
     final currency = NumberFormat.currency(
       symbol: '\$',
       decimalDigits: 0,
@@ -97,6 +102,36 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              householdAsync.when(
+                data: (household) {
+                  if (household == null || currentUser == null) {
+                    return _buildNoHouseholdBanner();
+                  }
+                  final householdConfigAsync = ref.watch(
+                    budgetConfigProvider((
+                      type: 'household',
+                      householdId: household.id,
+                    )),
+                  );
+                  return householdConfigAsync.when(
+                    data: (householdConfig) {
+                      return _buildPersonalAvailableBanner(
+                        household,
+                        currentUser,
+                        currency,
+                        ref,
+                        householdConfig,
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, s) => const SizedBox.shrink(),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, s) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,12 +236,26 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.lg),
-                    _buildSlider('Gastos', _pctExpense, AppColors.expense, (v) {
-                      setState(() => _pctExpense = v);
-                    }),
-                    _buildSlider('Ahorro', _pctSavings, AppColors.savings, (v) {
-                      setState(() => _pctSavings = v);
-                    }),
+                    _buildSlider(
+                      'Gastos',
+                      _pctExpense,
+                      AppColors.expense,
+                      (v) {
+                        setState(() => _pctExpense = v);
+                      },
+                      totalIncome * (_pctExpense / 100),
+                      currency,
+                    ),
+                    _buildSlider(
+                      'Ahorro',
+                      _pctSavings,
+                      AppColors.savings,
+                      (v) {
+                        setState(() => _pctSavings = v);
+                      },
+                      totalIncome * (_pctSavings / 100),
+                      currency,
+                    ),
                     _buildSlider(
                       'Inversión',
                       _pctInvestment,
@@ -214,6 +263,8 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                       (v) {
                         setState(() => _pctInvestment = v);
                       },
+                      totalIncome * (_pctInvestment / 100),
+                      currency,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
@@ -227,7 +278,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _buildPreviewBar(totalIncome, currency),
+              _buildPreviewBar(totalIncome, currency, ref),
               const SizedBox(height: AppSpacing.xl),
               _buildBudgetsSection(context, ref),
             ],
@@ -244,6 +295,8 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     double value,
     Color color,
     ValueChanged<double> onChanged,
+    double amount,
+    NumberFormat currency,
   ) {
     return Column(
       children: [
@@ -267,7 +320,10 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
               ],
             ),
-            Text('${value.round()}%'),
+            Text(
+              '${value.round()}% (${currency.format(amount)})',
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
           ],
         ),
         Slider(
@@ -282,85 +338,278 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     );
   }
 
-  Widget _buildPreviewBar(double totalIncome, NumberFormat currency) {
+  Widget _buildPreviewBar(
+    double totalIncome,
+    NumberFormat currency,
+    WidgetRef ref,
+  ) {
     if (totalIncome <= 0) return const SizedBox.shrink();
     final expenseAmt = totalIncome * (_pctExpense / 100);
     final savingAmt = totalIncome * (_pctSavings / 100);
     final investAmt = totalIncome * (_pctInvestment / 100);
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tu Plan Mensual',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.sm),
-            child: SizedBox(
-              height: 32,
-              child: Row(
+    final budgetsAsync = ref.watch(budgetsListProvider(null));
+
+    return budgetsAsync.when(
+      data: (budgets) {
+        final assignedExpense = budgets
+            .where((b) => b.type == 'expense')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final assignedSaving = budgets
+            .where((b) => b.type == 'saving')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final assignedInvestment = budgets
+            .where((b) => b.type == 'investment')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+
+        final totalAssigned =
+            assignedExpense + assignedSaving + assignedInvestment;
+        final totalBudgeted = expenseAmt + savingAmt + investAmt;
+        final remaining = totalBudgeted - totalAssigned;
+        final isOverBudget = remaining < 0;
+        final progress = totalBudgeted > 0
+            ? (totalAssigned / totalBudgeted).clamp(0.0, 1.5)
+            : 0.0;
+
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tu Plan Mensual',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppSpacing.sm),
+                child: SizedBox(
+                  height: 32,
+                  child: Row(
+                    children: [
+                      if (_pctExpense > 0)
+                        Expanded(
+                          flex: _pctExpense.round(),
+                          child: Container(
+                            color: AppColors.expense,
+                            child: Center(
+                              child: Text(
+                                currency.format(expenseAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_pctSavings > 0)
+                        Expanded(
+                          flex: _pctSavings.round(),
+                          child: Container(
+                            color: AppColors.savings,
+                            child: Center(
+                              child: Text(
+                                currency.format(savingAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_pctInvestment > 0)
+                        Expanded(
+                          flex: _pctInvestment.round(),
+                          child: Container(
+                            color: AppColors.investment,
+                            child: Center(
+                              child: Text(
+                                currency.format(investAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: isOverBudget
+                      ? AppColors.expense.withValues(alpha: 0.1)
+                      : AppColors.income.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppSpacing.sm),
+                  border: Border.all(
+                    color: isOverBudget ? AppColors.expense : AppColors.income,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isOverBudget
+                              ? 'Te has pasado del presupuesto'
+                              : 'Asignado vs Presupuestado',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${currency.format(totalAssigned)} / ${currency.format(totalBudgeted)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppSpacing.xs),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        backgroundColor: isOverBudget
+                            ? AppColors.expense.withValues(alpha: 0.2)
+                            : AppColors.textMuted.withValues(alpha: 0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isOverBudget
+                              ? AppColors.expense
+                              : progress >= 1.0
+                              ? AppColors.income
+                              : AppColors.primary,
+                        ),
+                        minHeight: 10,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${(progress * 100).toStringAsFixed(0)}% asignado',
+                          style: AppTypography.labelSmall,
+                        ),
+                        Text(
+                          isOverBudget
+                              ? '${currency.format(remaining.abs())} sobre presupuesto'
+                              : '${currency.format(remaining)} restante',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.income,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
                 children: [
-                  if (_pctExpense > 0)
-                    Expanded(
-                      flex: _pctExpense.round(),
-                      child: Container(
-                        color: AppColors.expense,
-                        child: Center(
-                          child: Text(
-                            currency.format(expenseAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_pctSavings > 0)
-                    Expanded(
-                      flex: _pctSavings.round(),
-                      child: Container(
-                        color: AppColors.savings,
-                        child: Center(
-                          child: Text(
-                            currency.format(savingAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_pctInvestment > 0)
-                    Expanded(
-                      flex: _pctInvestment.round(),
-                      child: Container(
-                        color: AppColors.investment,
-                        child: Center(
-                          child: Text(
-                            currency.format(investAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildPersonalAssignedChip(
+                    'Gastos',
+                    assignedExpense,
+                    expenseAmt,
+                    AppColors.expense,
+                    currency,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildPersonalAssignedChip(
+                    'Ahorro',
+                    assignedSaving,
+                    savingAmt,
+                    AppColors.savings,
+                    currency,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildPersonalAssignedChip(
+                    'Inversión',
+                    assignedInvestment,
+                    investAmt,
+                    AppColors.investment,
+                    currency,
+                  ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Text("Error: $e"),
+    );
+  }
+
+  Widget _buildPersonalAssignedChip(
+    String label,
+    double assigned,
+    double budgeted,
+    Color color,
+    NumberFormat currency,
+  ) {
+    final isOver = assigned > budgeted && budgeted > 0;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: isOver
+              ? AppColors.expense.withValues(alpha: 0.1)
+              : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppSpacing.xs),
+          border: Border.all(
+            color: isOver ? AppColors.expense : color,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: isOver ? AppColors.expense : color,
+              ),
+            ),
+            Text(
+              currency.format(assigned),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isOver ? AppColors.expense : color,
+              ),
+            ),
+            Text(
+              'de ${currency.format(budgeted)}',
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -488,7 +737,18 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               if (name.isEmpty || amount <= 0) return;
 
               if (existing != null) {
-                await ref.read(budgetRepositoryProvider).updateBudget(existing);
+                final updatedBudget = existing.copyWith(
+                  category: name,
+                  limitAmount: amount,
+                  monthlyQuota: amount,
+                  type: type,
+                  targetAmount: type == 'saving' || type == 'investment'
+                      ? amount
+                      : null,
+                );
+                await ref
+                    .read(budgetRepositoryProvider)
+                    .updateBudget(updatedBudget);
               } else {
                 await ref
                     .read(budgetRepositoryProvider)
@@ -503,6 +763,194 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               if (context.mounted) Navigator.pop(ctx);
             },
             child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoHouseholdBanner() {
+    return AppCard(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.infoLight,
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: AppColors.info),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Creá un hogar para ver tu disponibilidad personal',
+                style: TextStyle(color: AppColors.info),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPersonalAvailableBanner(
+    dynamic household,
+    dynamic currentUser,
+    NumberFormat currency,
+    WidgetRef ref,
+    BudgetConfig householdConfig,
+  ) {
+    final budgetsAsync = ref.watch(budgetsListProvider(household.id));
+
+    return budgetsAsync.when(
+      data: (budgets) {
+        final isUserA = currentUser.id == household.userAId;
+        final incomeA = householdConfig.incomeA;
+        final incomeB = householdConfig.incomeB;
+        final myIncome = isUserA ? incomeA : incomeB;
+        final totalHouseholdIncome = incomeA + incomeB;
+        final myRatio = totalHouseholdIncome > 0
+            ? myIncome / totalHouseholdIncome
+            : 0.5;
+
+        final expenseShare = budgets
+            .where((b) => b.type == 'expense')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final savingShare = budgets
+            .where((b) => b.type == 'saving')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final investmentShare = budgets
+            .where((b) => b.type == 'investment')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+
+        final myExpense = expenseShare * myRatio;
+        final mySaving = savingShare * myRatio;
+        final myInvestment = investmentShare * myRatio;
+        final myTotalContribution = myExpense + mySaving + myInvestment;
+        final available = myIncome - myTotalContribution;
+
+        final isNegative = available < 0;
+
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet,
+                    color: isNegative ? AppColors.expense : AppColors.income,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Disponible para Presupuesto Personal',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: isNegative
+                      ? AppColors.expenseLight
+                      : AppColors.incomeLight,
+                  borderRadius: BorderRadius.circular(AppSpacing.sm),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      currency.format(available),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isNegative
+                                ? AppColors.expense
+                                : AppColors.income,
+                          ),
+                    ),
+                    Text(
+                      isNegative
+                          ? 'Te estás pasando de tu ingreso'
+                          : 'Después de aportar al hogar',
+                      style: AppTypography.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Divider(),
+              const SizedBox(height: AppSpacing.sm),
+              _buildContributionRow(
+                'Tu ingreso en Hogar',
+                myIncome,
+                currency,
+                false,
+              ),
+              _buildContributionRow(
+                '- Tu parte Gastos',
+                myExpense,
+                currency,
+                true,
+              ),
+              _buildContributionRow(
+                '- Tu parte Ahorro',
+                mySaving,
+                currency,
+                true,
+              ),
+              _buildContributionRow(
+                '- Tu parte Inversión',
+                myInvestment,
+                currency,
+                true,
+              ),
+              const Divider(),
+              _buildContributionRow(
+                'Total aporte Hogar',
+                myTotalContribution,
+                currency,
+                true,
+                isBold: true,
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Text("Error: $e"),
+    );
+  }
+
+  Widget _buildContributionRow(
+    String label,
+    double amount,
+    NumberFormat currency,
+    bool isSubtraction, {
+    bool isBold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          Text(
+            '${isSubtraction ? '-' : ''}${currency.format(amount)}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+              color: isSubtraction ? AppColors.expense : AppColors.textPrimary,
+            ),
           ),
         ],
       ),

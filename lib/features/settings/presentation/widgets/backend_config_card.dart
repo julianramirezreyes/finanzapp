@@ -176,7 +176,7 @@ class _BackendConfigCardState extends ConsumerState<BackendConfigCard> {
           controller: _urlController,
           keyboardType: TextInputType.url,
           decoration: InputDecoration(
-            hintText: 'http://192.168.1.10:8080',
+            hintText: 'http://192.168.40.124:8081',
             errorText: _urlError,
             prefixIcon: const Icon(Icons.link),
             border: OutlineInputBorder(
@@ -211,10 +211,12 @@ class _BackendConfigCardState extends ConsumerState<BackendConfigCard> {
       setState(() => _urlError = error);
       return;
     }
-    ref.read(backendConfigProvider.notifier).setLocalUrl(value);
+    final notifier = ref.read(backendConfigProvider.notifier);
+    notifier.setLocalUrl(value);
+    notifier.applyAndRestartSession();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Configuración guardada. Sesión reiniciada.'),
+        content: Text('Configuración guardada. Presiona Iniciar Sesión de nuevo.'),
         behavior: SnackBarBehavior.floating,
       ),
     );

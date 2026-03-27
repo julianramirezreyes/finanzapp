@@ -69,7 +69,7 @@
     },
     {
       "name": "shared_preferences",
-      "version": "2.5.4",
+      "version": "2.5.5",
       "dependencies": [
         "flutter",
         "shared_preferences_android",
@@ -91,7 +91,7 @@
     },
     {
       "name": "google_fonts",
-      "version": "8.0.1",
+      "version": "8.0.2",
       "dependencies": [
         "crypto",
         "flutter",
@@ -110,7 +110,7 @@
     },
     {
       "name": "fl_chart",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "dependencies": [
         "equatable",
         "flutter",
@@ -119,7 +119,7 @@
     },
     {
       "name": "build_runner",
-      "version": "2.11.1",
+      "version": "2.13.1",
       "dependencies": [
         "analyzer",
         "args",
@@ -156,7 +156,7 @@
     },
     {
       "name": "json_serializable",
-      "version": "6.12.0",
+      "version": "6.13.1",
       "dependencies": [
         "analyzer",
         "async",
@@ -164,7 +164,6 @@
         "build_config",
         "dart_style",
         "json_annotation",
-        "json_schema",
         "meta",
         "path",
         "pub_semver",
@@ -175,14 +174,14 @@
     },
     {
       "name": "json_annotation",
-      "version": "4.10.0",
+      "version": "4.11.0",
       "dependencies": [
         "meta"
       ]
     },
     {
       "name": "supabase_flutter",
-      "version": "2.12.0",
+      "version": "2.12.2",
       "dependencies": [
         "app_links",
         "async",
@@ -213,7 +212,7 @@
     },
     {
       "name": "dio",
-      "version": "5.9.1",
+      "version": "5.9.2",
       "dependencies": [
         "async",
         "collection",
@@ -248,7 +247,7 @@
     },
     {
       "name": "cupertino_icons",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "dependencies": []
     },
     {
@@ -416,7 +415,7 @@
     },
     {
       "name": "shared_preferences_platform_interface",
-      "version": "2.4.1",
+      "version": "2.4.2",
       "dependencies": [
         "flutter",
         "plugin_platform_interface"
@@ -444,7 +443,7 @@
     },
     {
       "name": "shared_preferences_android",
-      "version": "2.4.20",
+      "version": "2.4.23",
       "dependencies": [
         "flutter",
         "shared_preferences_platform_interface"
@@ -600,7 +599,7 @@
     },
     {
       "name": "dart_style",
-      "version": "3.1.5",
+      "version": "3.1.7",
       "dependencies": [
         "analyzer",
         "args",
@@ -632,7 +631,7 @@
     },
     {
       "name": "built_value",
-      "version": "8.12.3",
+      "version": "8.12.5",
       "dependencies": [
         "built_collection",
         "collection",
@@ -665,7 +664,7 @@
     },
     {
       "name": "build_config",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "dependencies": [
         "checked_yaml",
         "json_annotation",
@@ -675,7 +674,7 @@
     },
     {
       "name": "build",
-      "version": "4.0.4",
+      "version": "4.0.5",
       "dependencies": [
         "analyzer",
         "crypto",
@@ -687,7 +686,7 @@
     },
     {
       "name": "async",
-      "version": "2.13.0",
+      "version": "2.13.1",
       "dependencies": [
         "collection",
         "meta"
@@ -713,7 +712,7 @@
     },
     {
       "name": "source_helper",
-      "version": "1.3.10",
+      "version": "1.3.11",
       "dependencies": [
         "analyzer",
         "source_gen"
@@ -721,7 +720,7 @@
     },
     {
       "name": "source_gen",
-      "version": "4.2.0",
+      "version": "4.2.2",
       "dependencies": [
         "analyzer",
         "async",
@@ -746,17 +745,6 @@
       ]
     },
     {
-      "name": "json_schema",
-      "version": "5.2.2",
-      "dependencies": [
-        "collection",
-        "http",
-        "logging",
-        "rfc_6901",
-        "uri"
-      ]
-    },
-    {
       "name": "web",
       "version": "1.1.1",
       "dependencies": []
@@ -777,7 +765,7 @@
     },
     {
       "name": "supabase",
-      "version": "2.10.2",
+      "version": "2.10.4",
       "dependencies": [
         "functions_client",
         "gotrue",
@@ -792,7 +780,7 @@
     },
     {
       "name": "app_links",
-      "version": "6.4.1",
+      "version": "7.0.0",
       "dependencies": [
         "app_links_linux",
         "app_links_platform_interface",
@@ -848,7 +836,7 @@
     },
     {
       "name": "dio_web_adapter",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "dependencies": [
         "dio",
         "http_parser",
@@ -1030,7 +1018,7 @@
     },
     {
       "name": "path_provider_android",
-      "version": "2.2.22",
+      "version": "2.2.23",
       "dependencies": [
         "flutter",
         "path_provider_platform_interface"
@@ -1062,19 +1050,6 @@
         "meta",
         "source_span"
       ]
-    },
-    {
-      "name": "uri",
-      "version": "1.0.0",
-      "dependencies": [
-        "matcher",
-        "quiver"
-      ]
-    },
-    {
-      "name": "rfc_6901",
-      "version": "0.2.1",
-      "dependencies": []
     },
     {
       "name": "url_launcher_windows",
@@ -1120,7 +1095,7 @@
     },
     {
       "name": "url_launcher_ios",
-      "version": "6.4.0",
+      "version": "6.4.1",
       "dependencies": [
         "flutter",
         "url_launcher_platform_interface"
@@ -1128,7 +1103,7 @@
     },
     {
       "name": "url_launcher_android",
-      "version": "6.3.28",
+      "version": "6.3.29",
       "dependencies": [
         "flutter",
         "url_launcher_platform_interface"
@@ -1148,7 +1123,7 @@
     },
     {
       "name": "storage_client",
-      "version": "2.4.1",
+      "version": "2.5.1",
       "dependencies": [
         "http",
         "http_parser",
@@ -1160,7 +1135,7 @@
     },
     {
       "name": "realtime_client",
-      "version": "2.7.0",
+      "version": "2.7.1",
       "dependencies": [
         "collection",
         "http",
@@ -1181,7 +1156,7 @@
     },
     {
       "name": "gotrue",
-      "version": "2.18.0",
+      "version": "2.19.0",
       "dependencies": [
         "collection",
         "crypto",
@@ -1292,24 +1267,16 @@
       ]
     },
     {
-      "name": "quiver",
-      "version": "3.2.2",
-      "dependencies": [
-        "matcher"
-      ]
-    },
-    {
       "name": "retry",
       "version": "3.1.2",
       "dependencies": []
     },
     {
       "name": "dart_jsonwebtoken",
-      "version": "3.3.1",
+      "version": "3.4.0",
       "dependencies": [
         "clock",
         "convert",
-        "ed25519_edwards",
         "pointycastle"
       ]
     },
@@ -1329,7 +1296,7 @@
     },
     {
       "name": "native_toolchain_c",
-      "version": "0.17.4",
+      "version": "0.17.6",
       "dependencies": [
         "code_assets",
         "glob",
@@ -1341,7 +1308,7 @@
     },
     {
       "name": "hooks",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": [
         "collection",
         "crypto",
@@ -1360,28 +1327,11 @@
       ]
     },
     {
-      "name": "ed25519_edwards",
-      "version": "0.3.1",
-      "dependencies": [
-        "adaptive_number",
-        "collection",
-        "convert",
-        "crypto"
-      ]
-    },
-    {
       "name": "pointycastle",
       "version": "4.0.0",
       "dependencies": [
         "collection",
         "convert"
-      ]
-    },
-    {
-      "name": "adaptive_number",
-      "version": "1.0.0",
-      "dependencies": [
-        "fixnum"
       ]
     }
   ],

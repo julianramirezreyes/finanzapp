@@ -12,6 +12,7 @@ import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 
 class HouseholdBudgetTab extends ConsumerStatefulWidget {
@@ -114,9 +115,9 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
               householdUserAId: household.userAId,
             );
 
-            final totalIncome =
-                (double.tryParse(_incomeAController.text) ?? 0) +
-                (double.tryParse(_incomeBController.text) ?? 0);
+            final incomeA = double.tryParse(_incomeAController.text) ?? 0;
+            final incomeB = double.tryParse(_incomeBController.text) ?? 0;
+            final totalIncome = incomeA + incomeB;
             final totalPct = _pctExpense + _pctSavings + _pctInvestment;
             final isInvalid = totalPct != 100;
             final currency = NumberFormat.currency(
@@ -255,16 +256,26 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                           ),
                         ],
                         const SizedBox(height: AppSpacing.lg),
-                        _buildSlider('Gastos', _pctExpense, AppColors.expense, (
-                          v,
-                        ) {
-                          setState(() => _pctExpense = v);
-                        }),
-                        _buildSlider('Ahorro', _pctSavings, AppColors.savings, (
-                          v,
-                        ) {
-                          setState(() => _pctSavings = v);
-                        }),
+                        _buildSlider(
+                          'Gastos',
+                          _pctExpense,
+                          AppColors.expense,
+                          (v) {
+                            setState(() => _pctExpense = v);
+                          },
+                          totalIncome * (_pctExpense / 100),
+                          currency,
+                        ),
+                        _buildSlider(
+                          'Ahorro',
+                          _pctSavings,
+                          AppColors.savings,
+                          (v) {
+                            setState(() => _pctSavings = v);
+                          },
+                          totalIncome * (_pctSavings / 100),
+                          currency,
+                        ),
                         _buildSlider(
                           'Inversión',
                           _pctInvestment,
@@ -272,6 +283,8 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                           (v) {
                             setState(() => _pctInvestment = v);
                           },
+                          totalIncome * (_pctInvestment / 100),
+                          currency,
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         SizedBox(
@@ -292,7 +305,14 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  _buildPreviewBar(totalIncome, currency),
+                  _buildPreviewBar(
+                    totalIncome,
+                    currency,
+                    household.id,
+                    ref,
+                    incomeA,
+                    incomeB,
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   _buildGoalsSection(context, ref, household.id),
                 ],
@@ -313,6 +333,8 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     double value,
     Color color,
     ValueChanged<double> onChanged,
+    double amount,
+    NumberFormat currency,
   ) {
     return Column(
       children: [
@@ -336,7 +358,10 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                 ),
               ],
             ),
-            Text('${value.round()}%'),
+            Text(
+              '${value.round()}% (${currency.format(amount)})',
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
           ],
         ),
         Slider(
@@ -351,85 +376,303 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     );
   }
 
-  Widget _buildPreviewBar(double totalIncome, NumberFormat currency) {
+  Widget _buildPreviewBar(
+    double totalIncome,
+    NumberFormat currency,
+    String householdId,
+    WidgetRef ref,
+    double incomeA,
+    double incomeB,
+  ) {
     if (totalIncome <= 0) return const SizedBox.shrink();
     final expenseAmt = totalIncome * (_pctExpense / 100);
     final savingAmt = totalIncome * (_pctSavings / 100);
     final investAmt = totalIncome * (_pctInvestment / 100);
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Disponibilidad Mensual',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.sm),
-            child: SizedBox(
-              height: 32,
-              child: Row(
+    final budgetsAsync = ref.watch(budgetsListProvider(householdId));
+
+    return budgetsAsync.when(
+      data: (budgets) {
+        final assignedExpense = budgets
+            .where((b) => b.type == 'expense')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final assignedSaving = budgets
+            .where((b) => b.type == 'saving')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+        final assignedInvestment = budgets
+            .where((b) => b.type == 'investment')
+            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+
+        final myRatio = totalIncome > 0 ? incomeA / totalIncome : 0.5;
+        final partnerRatio = totalIncome > 0 ? incomeB / totalIncome : 0.5;
+
+        final totalAssigned =
+            assignedExpense + assignedSaving + assignedInvestment;
+        final totalBudgeted = expenseAmt + savingAmt + investAmt;
+        final remaining = totalBudgeted - totalAssigned;
+        final isOverBudget = remaining < 0;
+        final progress = totalBudgeted > 0
+            ? (totalAssigned / totalBudgeted).clamp(0.0, 1.5)
+            : 0.0;
+
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Disponibilidad Mensual',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppSpacing.sm),
+                child: SizedBox(
+                  height: 32,
+                  child: Row(
+                    children: [
+                      if (_pctExpense > 0)
+                        Expanded(
+                          flex: _pctExpense.round(),
+                          child: Container(
+                            color: AppColors.expense,
+                            child: Center(
+                              child: Text(
+                                currency.format(expenseAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_pctSavings > 0)
+                        Expanded(
+                          flex: _pctSavings.round(),
+                          child: Container(
+                            color: AppColors.savings,
+                            child: Center(
+                              child: Text(
+                                currency.format(savingAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_pctInvestment > 0)
+                        Expanded(
+                          flex: _pctInvestment.round(),
+                          child: Container(
+                            color: AppColors.investment,
+                            child: Center(
+                              child: Text(
+                                currency.format(investAmt),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: isOverBudget
+                      ? AppColors.expense.withValues(alpha: 0.1)
+                      : AppColors.income.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppSpacing.sm),
+                  border: Border.all(
+                    color: isOverBudget ? AppColors.expense : AppColors.income,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isOverBudget
+                              ? '⚠️ Te has pasado del presupuesto'
+                              : 'Asignado vs Presupuestado',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${currency.format(totalAssigned)} / ${currency.format(totalBudgeted)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppSpacing.xs),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        backgroundColor: isOverBudget
+                            ? AppColors.expense.withValues(alpha: 0.2)
+                            : AppColors.textMuted.withValues(alpha: 0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isOverBudget
+                              ? AppColors.expense
+                              : progress >= 1.0
+                              ? AppColors.income
+                              : AppColors.primary,
+                        ),
+                        minHeight: 10,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${(progress * 100).toStringAsFixed(0)}% asignado',
+                          style: AppTypography.labelSmall,
+                        ),
+                        Text(
+                          isOverBudget
+                              ? '${currency.format(remaining.abs())} sobre presupuesto'
+                              : '${currency.format(remaining)} restante',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: isOverBudget
+                                ? AppColors.expense
+                                : AppColors.income,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_pctExpense > 0)
-                    Expanded(
-                      flex: _pctExpense.round(),
-                      child: Container(
-                        color: AppColors.expense,
-                        child: Center(
-                          child: Text(
-                            currency.format(expenseAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_pctSavings > 0)
-                    Expanded(
-                      flex: _pctSavings.round(),
-                      child: Container(
-                        color: AppColors.savings,
-                        child: Center(
-                          child: Text(
-                            currency.format(savingAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_pctInvestment > 0)
-                    Expanded(
-                      flex: _pctInvestment.round(),
-                      child: Container(
-                        color: AppColors.investment,
-                        child: Center(
-                          child: Text(
-                            currency.format(investAmt),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildAssignedChip(
+                    'Gastos',
+                    assignedExpense,
+                    expenseAmt,
+                    AppColors.expense,
+                    currency,
+                    myRatio,
+                    partnerRatio,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildAssignedChip(
+                    'Ahorro',
+                    assignedSaving,
+                    savingAmt,
+                    AppColors.savings,
+                    currency,
+                    myRatio,
+                    partnerRatio,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _buildAssignedChip(
+                    'Inversión',
+                    assignedInvestment,
+                    investAmt,
+                    AppColors.investment,
+                    currency,
+                    myRatio,
+                    partnerRatio,
+                  ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Text("Error: $e"),
+    );
+  }
+
+  Widget _buildAssignedChip(
+    String label,
+    double assigned,
+    double budgeted,
+    Color color,
+    NumberFormat currency,
+    double myRatio,
+    double partnerRatio,
+  ) {
+    final myShare = assigned * myRatio;
+    final partnerShare = assigned * partnerRatio;
+    final isOver = assigned > budgeted && budgeted > 0;
+    return Expanded(
+      flex: 1,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: isOver
+              ? AppColors.expense.withValues(alpha: 0.1)
+              : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppSpacing.xs),
+          border: Border.all(
+            color: isOver ? AppColors.expense : color,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: isOver ? AppColors.expense : color,
+                fontSize: 10,
+              ),
+            ),
+            Text(
+              currency.format(assigned),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isOver ? AppColors.expense : color,
+              ),
+            ),
+            Text(
+              'Vos: ${currency.format(myShare)}',
+              style: TextStyle(fontSize: 8, color: AppColors.primary),
+            ),
+            Text(
+              'Pareja: ${currency.format(partnerShare)}',
+              style: TextStyle(fontSize: 8, color: AppColors.textSecondary),
+            ),
+            Text(
+              'de ${currency.format(budgeted)}',
+              style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -440,6 +683,11 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     String householdId,
   ) {
     final budgetsAsync = ref.watch(budgetsListProvider(householdId));
+
+    final incomeA = double.tryParse(_incomeAController.text) ?? 0;
+    final incomeB = double.tryParse(_incomeBController.text) ?? 0;
+    final totalIncome = incomeA + incomeB;
+    final splitRatio = totalIncome > 0 ? incomeA / totalIncome : 0.5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,6 +744,8 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     currentAmount: b.currentAmount,
                     onTap: () =>
                         _showEditGoalDialog(context, ref, householdId, b),
+                    splitRatio: splitRatio,
+                    showSplit: true,
                   ),
                 );
               }).toList(),
@@ -584,7 +834,18 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
               if (name.isEmpty || amount <= 0) return;
 
               if (existing != null) {
-                await ref.read(budgetRepositoryProvider).updateBudget(existing);
+                final updatedBudget = existing.copyWith(
+                  category: name,
+                  limitAmount: amount,
+                  monthlyQuota: amount,
+                  type: type,
+                  targetAmount: type == 'saving' || type == 'investment'
+                      ? amount
+                      : null,
+                );
+                await ref
+                    .read(budgetRepositoryProvider)
+                    .updateBudget(updatedBudget);
               } else {
                 await ref
                     .read(budgetRepositoryProvider)

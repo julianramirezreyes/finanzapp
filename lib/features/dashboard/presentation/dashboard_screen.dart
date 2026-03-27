@@ -18,6 +18,7 @@ import 'package:finanzapp_v2/core/presentation/responsive_layout.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/balance_card.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/summary_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/account_with_pockets_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/action_chip.dart' as app_ui;
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -133,7 +134,7 @@ class DashboardScreen extends ConsumerWidget {
                 FadeSlideTransition(
                   child: _buildBalanceCard(
                     context,
-                    data.totalBalance,
+                    data.totalBalanceWithPockets,
                     currencyFormat,
                   ),
                 ),
@@ -262,7 +263,7 @@ class DashboardScreen extends ConsumerWidget {
                           width: 400,
                           child: _buildBalanceCard(
                             context,
-                            data.totalBalance,
+                            data.totalBalanceWithPockets,
                             currencyFormat,
                           ),
                         ),
@@ -524,8 +525,30 @@ class DashboardScreen extends ConsumerWidget {
             ),
           )
         else
-          ...data.accounts.map(
-            (acc) => Padding(
+          ...data.accounts.map((acc) {
+            final pocketsTotal = data.pocketsTotals[acc.id] ?? 0.0;
+            final pocketsCount = data.pocketsCounts[acc.id] ?? 0;
+            final hasPockets = pocketsCount > 0;
+            final totalValue = acc.balance + pocketsTotal;
+
+            if (hasPockets) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AccountWithPocketsTile(
+                  name: acc.name,
+                  type: acc.type,
+                  balance: acc.balance,
+                  totalValue: totalValue,
+                  pocketsCount: pocketsCount,
+                  pocketsTotal: pocketsTotal,
+                  onTap: () => context.push(
+                    '/accounts/${acc.id}/vault',
+                    extra: {'name': acc.name},
+                  ),
+                ),
+              );
+            }
+            return Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: AccountTile(
                 name: acc.name,
@@ -536,8 +559,8 @@ class DashboardScreen extends ConsumerWidget {
                   extra: {'name': acc.name},
                 ),
               ),
-            ),
-          ),
+            );
+          }),
       ],
     );
   }

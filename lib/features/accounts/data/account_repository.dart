@@ -54,6 +54,7 @@ class AccountRepository {
           'type': account.type,
           'currency': account.currency,
           'include_in_net_worth': account.includeInNetWorth,
+          'cutoff_day': account.cutoffDay,
         },
       );
     } catch (e) {
@@ -80,6 +81,24 @@ class AccountRepository {
       await _dio.delete('/accounts/$accountId');
     } catch (e) {
       throw Exception('Failed to delete account: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDebtSummary(String accountId) async {
+    try {
+      final response = await _dio.get('/accounts/$accountId/debt');
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to fetch debt summary: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAccountWithPockets(String accountId) async {
+    try {
+      final response = await _dio.get('/accounts/$accountId');
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to fetch account with pockets: $e');
     }
   }
 }

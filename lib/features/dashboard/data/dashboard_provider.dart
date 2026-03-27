@@ -1,4 +1,5 @@
 import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
+import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:finanzapp_v2/features/history/data/history_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,21 +9,28 @@ class DashboardData {
   final double yearlyIncome;
   final double yearlyExpense;
   final List<Account> accounts;
+  final Map<String, double> pocketsTotals;
+  final Map<String, int> pocketsCounts;
 
   DashboardData({
     required this.totalBalance,
     required this.yearlyIncome,
     required this.yearlyExpense,
     required this.accounts,
+    required this.pocketsTotals,
+    required this.pocketsCounts,
   });
 
   double get yearlyBalance => yearlyIncome - yearlyExpense;
+  double get totalBalanceWithPockets =>
+      totalBalance + pocketsTotals.values.fold(0.0, (sum, v) => sum + v);
 }
 
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
   ref,
 ) async {
   final accountRepo = ref.watch(accountRepositoryProvider);
+  final pocketRepo = ref.watch(pocketRepositoryProvider);
   final historyRepo = ref.watch(historyRepositoryProvider);
 
   final accounts = await accountRepo.getAccounts();
@@ -30,10 +38,26 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
 
   final yearlySummary = await historyRepo.getYearlySummary();
 
+  final pocketsTotals = <String, double>{};
+  final pocketsCounts = <String, int>{};
+  for (final acc in accounts) {
+    try {
+      final pockets = await pocketRepo.getPockets(acc.id);
+      if (pockets.isNotEmpty) {
+        pocketsTotals[acc.id] = pockets.fold(0.0, (sum, p) => sum + p.balance);
+        pocketsCounts[acc.id] = pockets.length;
+      }
+    } catch (_) {
+      // Si falla, continuar sin pockets
+    }
+  }
+
   return DashboardData(
     totalBalance: totalBalance,
     yearlyIncome: yearlySummary.totalIncome,
     yearlyExpense: yearlySummary.totalExpense,
     accounts: accounts,
+    pocketsTotals: pocketsTotals,
+    pocketsCounts: pocketsCounts,
   );
 });

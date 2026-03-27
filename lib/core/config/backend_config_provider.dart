@@ -20,7 +20,7 @@ class BackendConfigNotifier extends AsyncNotifier<BackendConfig> {
   BackendConfig _loadConfig() {
     final modeStr = _prefs.getString(_keyMode) ?? 'online';
     final localUrl =
-        _prefs.getString(_keyLocalUrl) ?? 'http://192.168.1.10:8080';
+        _prefs.getString(_keyLocalUrl) ?? 'http://192.168.40.124:8081';
     return BackendConfig(
       mode: BackendMode.fromString(modeStr),
       localUrl: localUrl,
@@ -34,7 +34,6 @@ class BackendConfigNotifier extends AsyncNotifier<BackendConfig> {
       final current = _loadConfig();
       return current.copyWith(mode: mode);
     });
-    await _clearSessionAndNotify();
   }
 
   Future<void> setLocalUrl(String url) async {
@@ -44,6 +43,9 @@ class BackendConfigNotifier extends AsyncNotifier<BackendConfig> {
       final current = _loadConfig();
       return current.copyWith(localUrl: url);
     });
+  }
+
+  Future<void> applyAndRestartSession() async {
     await _clearSessionAndNotify();
   }
 

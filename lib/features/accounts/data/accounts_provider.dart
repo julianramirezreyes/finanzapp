@@ -8,3 +8,11 @@ final accountsListProvider = FutureProvider.autoDispose<List<Account>>((
   final repository = ref.watch(accountRepositoryProvider);
   return repository.getAccounts();
 });
+
+// Provider para obtener el resumen de deuda de una cuenta
+final debtSummaryProvider = FutureProvider.family<Map<String, dynamic>, String>(
+  (ref, accountId) async {
+    final repository = ref.watch(accountRepositoryProvider);
+    return repository.getDebtSummary(accountId);
+  },
+);

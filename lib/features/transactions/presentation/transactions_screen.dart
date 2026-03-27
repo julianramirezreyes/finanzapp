@@ -1,6 +1,7 @@
 import 'package:finanzapp_v2/features/history/data/history_provider.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
+import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -272,6 +273,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       try {
         await ref.read(transactionRepositoryProvider).deleteTransaction(id);
         ref.invalidate(personalHistoryProvider);
+        ref.invalidate(transactionsListProvider);
+        ref.invalidate(accountsListProvider);
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
