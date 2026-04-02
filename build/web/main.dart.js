@@ -60283,27 +60283,27 @@ s.as=r
 s.dx=null},
 $S:0}
 A.aIf.prototype={
-$1(a){var s,r,q,p,o,n,m,l,k,j,i=null,h=t.FG,g=A.b([],h),f=this.a
-if(f.x==="income")B.b.M(g,A.b([B.a_X,B.a0c,B.a0b,B.a02,B.a_Z],h))
+$1(a){var s,r,q,p,o,n,m,l,k,j=null,i=t.FG,h=A.b([],i),g=this.a
+if(g.x==="income")B.b.M(h,A.b([B.a_X,B.a0c,B.a0b,B.a02,B.a_Z],i))
 else{s=J.aS(a)
-if(s.gcX(a)){r=A.hI(0,i,"$")
+if(s.gcX(a)){r=A.hI(0,j,"$")
 for(s=s.gai(a),q=t.p,p=t.Q;s.A();){o=s.gP()
-if(f.as==="personal"&&o.at>0){n=o.w
-m=o.at
-l=m>0?B.d.aF(n/m*100):0
-k=""+l+"% - "+r.bR(m-n)+" libres"}else k=o.as?"Fijo":"Meta"
-j=o.a
-o=A.y(o.c,i,i,i,i,B.an0,i,i,i)
-g.push(new A.bQ("budget:"+j,A.ai(A.b([o,A.y(k,i,i,i,i,new A.B(!0,B.S,i,i,i,i,10,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i),i,i,i)],q),B.O,B.f,B.aa),B.aQ,i,p))}}if(f.x==="transfer")B.b.hw(g,0,B.a_V)
-if(g.length===0)B.b.M(g,A.b([B.a_W,B.a0d],h))}if(f.dx==null||!B.b.iz(g,new A.aId(f)))if(g.length!==0)f.dx=B.b.gad(g).r
-h=A.y("Categor\xeda",i,i,i,i,A.ap(i,i,B.a6,i,i,i,i,i,i,i,i,14,i,i,B.N,i,i,!0,i,i,i,i,i,i,i,i),i,i,i)
+n=o.at
+if(n>0){m=o.w
+l=B.d.aF(m/n*100)
+k=""+l+"% - "+r.bR(n-m)+" libres"}else k=o.as?"Fijo":"Meta"
+n=o.a
+o=A.y(o.c,j,j,j,j,B.an0,j,j,j)
+h.push(new A.bQ("budget:"+n,A.ai(A.b([o,A.y(k,j,j,j,j,new A.B(!0,B.S,j,j,j,j,10,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j),j,j,j)],q),B.O,B.f,B.aa),B.aQ,j,p))}}if(g.x==="transfer")B.b.hw(h,0,B.a_V)
+if(h.length===0)B.b.M(h,A.b([B.a_W,B.a0d],i))}if(g.dx==null||!B.b.iz(h,new A.aId(g)))if(h.length!==0)g.dx=B.b.gad(h).r
+i=A.y("Categor\xeda",j,j,j,j,A.ap(j,j,B.a6,j,j,j,j,j,j,j,j,14,j,j,B.N,j,j,!0,j,j,j,j,j,j,j,j),j,j,j)
 s=A.a8(12)
 q=A.dY(B.aT,1)
-p=f.as
-o=f.x
-j=f.dx
-f=f.CW||f.cy!=null?i:new A.aIe(f)
-return A.ai(A.b([h,B.al,A.aJ(i,new A.kl(A.me(i,i,i,!0,!0,g,new A.ct("cat_"+p+o,t.kK),f,i,i,j,t.N),i),B.n,i,B.yU,new A.aN(B.j,i,q,s,i,i,B.E),i,i,i,B.Ar,i,i,i)],t.p),B.O,B.f,B.e)},
+p=g.as
+o=g.x
+n=g.dx
+g=g.CW||g.cy!=null?j:new A.aIe(g)
+return A.ai(A.b([i,B.al,A.aJ(j,new A.kl(A.me(j,j,j,!0,!0,h,new A.ct("cat_"+p+o,t.kK),g,j,j,n,t.N),j),B.n,j,B.yU,new A.aN(B.j,j,q,s,j,j,B.E),j,j,j,B.Ar,j,j,j)],t.p),B.O,B.f,B.e)},
 $S:765}
 A.aId.prototype={
 $1(a){return a.r==this.a.dx},

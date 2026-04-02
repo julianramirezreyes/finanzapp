@@ -497,9 +497,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             );
 
             for (var b in budgets) {
-              // Mostrar progreso solo para contexto personal
+              // Mostrar progreso si hay monthlyQuota configurado (para personal y hogar)
               String subtitle = '';
-              if (_context == 'personal' && b.monthlyQuota > 0) {
+              if (b.monthlyQuota > 0) {
                 final double spent = b.currentAmount;
                 final double limit = b.monthlyQuota;
                 final double available = limit - spent;
