@@ -150,7 +150,9 @@ class _BackendConfigCardState extends ConsumerState<BackendConfigCard> {
             ],
             selected: {config.mode},
             onSelectionChanged: (selected) {
-              ref.read(backendConfigProvider.notifier).setMode(selected.first);
+              final notifier = ref.read(backendConfigProvider.notifier);
+              notifier.setMode(selected.first);
+              notifier.applyAndRestartSession();
             },
           ),
         ),
@@ -216,7 +218,9 @@ class _BackendConfigCardState extends ConsumerState<BackendConfigCard> {
     notifier.applyAndRestartSession();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Configuración guardada. Presiona Iniciar Sesión de nuevo.'),
+        content: Text(
+          'Configuración guardada. Presiona Iniciar Sesión de nuevo.',
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
