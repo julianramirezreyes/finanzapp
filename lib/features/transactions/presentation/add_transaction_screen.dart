@@ -490,6 +490,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ),
           ]);
         } else {
+          // Gasto General - not linked to any budget
+          items.add(
+            const DropdownMenuItem(
+              value: "static:GastoGeneral",
+              child: Text("Gasto General"),
+            ),
+          );
+
           if (budgets.isNotEmpty) {
             final currency = NumberFormat.currency(
               symbol: '\$',
