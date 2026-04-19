@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -94,6 +95,30 @@ class DioClientNotifier extends Notifier<Dio> {
 
     return dio;
   }
+
+  /// Check backend health by calling a lightweight endpoint.
+  /// Returns true if the backend responds successfully.
+  Future<bool> checkHealth() async {
+    final client = ref.read(dioProvider);
+    debugPrint('[HealthCheck] Testing connection...');
+    try {
+      // Try root endpoint first - returns 404 if no routes match
+      final response = await client.get('/');
+      debugPrint('[HealthCheck] GET / → ${response.statusCode}');
+      return response.statusCode == 200 || response.statusCode == 404;
+    } catch (e) {
+      debugPrint('[HealthCheck] GET / failed: $e');
+      // Fallback: try /health (requires endpoint on Go)
+      try {
+        final fallback = await client.get('/health');
+        debugPrint('[HealthCheck] GET /health → ${fallback.statusCode}');
+        return fallback.statusCode == 200;
+      } catch (e2) {
+        debugPrint('[HealthCheck] GET /health failed: $e2');
+        return false;
+      }
+    }
+  }
 }
 
 final backendConfigProvider =
@@ -112,4 +137,29 @@ final baseUrlProvider = Provider<String>((ref) {
     loading: () => BackendConfig.kProdUrl,
     error: (e, s) => BackendConfig.kProdUrl,
   );
+});
+
+/// Provider for checking backend health status.
+final backendHealthProvider = FutureProvider<bool>((ref) async {
+  final dio = ref.watch(dioProvider);
+  debugPrint('[backendHealthProvider] Checking...');
+  try {
+    // Try root endpoint first - returns 404 if no routes match but means backend is up
+    final response = await dio.get('/');
+    debugPrint('[backendHealthProvider] GET / → ${response.statusCode}');
+    return response.statusCode == 200 || response.statusCode == 404;
+  } catch (e) {
+    debugPrint('[backendHealthProvider] GET / failed: $e');
+    // Fallback: try /health (requires endpoint on Go)
+    try {
+      final fallback = await dio.get('/health');
+      debugPrint(
+        '[backendHealthProvider] GET /health → ${fallback.statusCode}',
+      );
+      return fallback.statusCode == 200;
+    } catch (e2) {
+      debugPrint('[backendHealthProvider] GET /health failed: $e2');
+      return false;
+    }
+  }
 });

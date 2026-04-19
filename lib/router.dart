@@ -16,6 +16,7 @@ import 'package:finanzapp_v2/features/automation/presentation/recurring_payments
 import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:finanzapp_v2/features/settings/presentation/settings_screen.dart';
+import 'package:finanzapp_v2/features/splash/presentation/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,13 +26,19 @@ final routerProvider = Provider<GoRouter>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange),
     redirect: (context, state) {
       final session = supabase.auth.currentSession;
       final isLoggedIn = session != null;
       final isLoginRoute = state.uri.path == '/login';
       final isRegisterRoute = state.uri.path == '/register';
+      final isSplashRoute = state.uri.path == '/splash';
+
+      // Don't redirect splash - let it handle navigation
+      if (isSplashRoute) {
+        return null;
+      }
 
       if (!isLoggedIn && !isLoginRoute && !isRegisterRoute) {
         return '/login';
@@ -44,6 +51,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
