@@ -73,8 +73,8 @@ class DioClientNotifier extends Notifier<Dio> {
     final dio = Dio(
       BaseOptions(
         baseUrl: config.baseUrl,
-        connectTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 60),
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
 

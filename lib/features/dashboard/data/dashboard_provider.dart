@@ -2,6 +2,7 @@ import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:finanzapp_v2/features/history/data/history_repository.dart';
+import 'package:finanzapp_v2/features/history/domain/personal_history_summary.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DashboardData {
@@ -33,22 +34,33 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
   final pocketRepo = ref.watch(pocketRepositoryProvider);
   final historyRepo = ref.watch(historyRepositoryProvider);
 
-  final accounts = await accountRepo.getAccounts();
+  // PARALLEL LOADING: Load accounts and history in parallel
+  final accountsFuture = accountRepo.getAccounts();
+  final historyFuture = historyRepo.getYearlySummary();
+
+  // Wait for both to complete
+  final accounts = await accountsFuture;
+  final yearlySummary = await historyFuture;
   final totalBalance = accounts.fold(0.0, (sum, acc) => sum + acc.balance);
 
-  final yearlySummary = await historyRepo.getYearlySummary();
+  // Fetch all pockets in parallel
+  final pocketResults = await Future.wait(
+    accounts.map(
+      (acc) => pocketRepo.getPockets(acc.id).then((pockets) {
+        return MapEntry(acc.id, pockets);
+      }),
+    ),
+  ).catchError((_) => <MapEntry>[]);
 
   final pocketsTotals = <String, double>{};
   final pocketsCounts = <String, int>{};
-  for (final acc in accounts) {
-    try {
-      final pockets = await pocketRepo.getPockets(acc.id);
-      if (pockets.isNotEmpty) {
-        pocketsTotals[acc.id] = pockets.fold(0.0, (sum, p) => sum + p.balance);
-        pocketsCounts[acc.id] = pockets.length;
-      }
-    } catch (_) {
-      // Si falla, continuar sin pockets
+  for (final entry in pocketResults) {
+    if (entry.value.isNotEmpty) {
+      pocketsTotals[entry.key] = entry.value.fold(
+        0.0,
+        (sum, p) => sum + p.balance,
+      );
+      pocketsCounts[entry.key] = entry.value.length;
     }
   }
 

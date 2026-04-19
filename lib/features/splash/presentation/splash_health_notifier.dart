@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/backend_config_provider.dart';
+import '../../dashboard/data/dashboard_provider.dart';
 import '../domain/splash_state.dart';
 
 /// Initial poll delay in milliseconds (fast first check).
@@ -131,7 +132,16 @@ class SplashHealthNotifier extends Notifier<SplashState> {
     }
 
     if (isHealthy) {
-      debugPrint('[Splash] Ready! Cancel timer and set state.');
+      debugPrint('[Splash] Backend UP! Preloading dashboard...');
+
+      // Preload dashboard data while showing splash
+      try {
+        await ref.read(dashboardProvider.future);
+        debugPrint('[Splash] Dashboard loaded! Ready to navigate.');
+      } catch (e) {
+        debugPrint('[Splash] Dashboard preload failed: $e');
+      }
+
       _pollingTimer?.cancel();
       _pollingTimer = null;
       state = SplashState.ready;

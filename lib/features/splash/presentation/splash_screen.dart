@@ -136,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final session = supabase.auth.currentSession;
 
     if (session != null) {
-      // User is logged in, go to dashboard
+      // Dashboard is already preloaded, go directly
       if (mounted) {
         context.go('/');
       }

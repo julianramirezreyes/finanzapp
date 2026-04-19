@@ -187,9 +187,16 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => context.push('/transactions/add'),
-          child: const Icon(Icons.add),
+        floatingActionButton: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom > 0
+                ? MediaQuery.of(context).padding.bottom + 8
+                : 8,
+          ),
+          child: FloatingActionButton(
+            onPressed: () => context.push('/transactions/add'),
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
       desktopBody: Scaffold(
@@ -305,7 +312,29 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Cargando dashboard...',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 error: (e, s) => Center(child: Text("Error: $e")),
               ),
             ),
