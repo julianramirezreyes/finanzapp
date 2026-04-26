@@ -1258,6 +1258,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             );
           }
         } else {
+          // If paying credit card (reducing debt), call payCreditCard endpoint
+          if (_payingCreditCard &&
+              _creditCardAccountId != null &&
+              _accountId != null &&
+              _amount > 0) {
+            await ref
+                .read(transactionRepositoryProvider)
+                .payCreditCard(
+                  creditCardAccountId: _creditCardAccountId!,
+                  amount: _amount,
+                  accountId: _accountId!,
+                  date: _date,
+                  description: 'Pago de deuda tarjeta',
+                );
+          }
+
           await ref
               .read(transactionRepositoryProvider)
               .createTransaction(
@@ -1299,6 +1315,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ref.invalidate(personalHistoryProvider);
         ref.invalidate(budgetsListProvider);
         ref.invalidate(householdSnapshotProvider);
+
+        // Invalidate credit card debt so it recalculates
+        if (_payingCreditCard &&
+            _creditCardAccountId != null &&
+            _accountId != null) {
+          ref.invalidate(vaultDebtSummaryProvider(_accountId!));
+        }
 
         if (mounted) {
           context.pop();

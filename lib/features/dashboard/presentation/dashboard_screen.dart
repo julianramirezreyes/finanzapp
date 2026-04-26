@@ -324,7 +324,7 @@ class DashboardScreen extends ConsumerWidget {
                           valueColor: AlwaysStoppedAnimation(AppColors.primary),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         'Cargando dashboard...',
                         style: TextStyle(

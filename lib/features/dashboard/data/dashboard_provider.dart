@@ -2,7 +2,6 @@ import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:finanzapp_v2/features/history/data/history_repository.dart';
-import 'package:finanzapp_v2/features/history/domain/personal_history_summary.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DashboardData {
