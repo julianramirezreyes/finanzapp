@@ -654,14 +654,17 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 _accountId = v;
                 // Limpiar selección de TC si no pertenece a la nueva cuenta
                 if (_creditCardAccountId != null && v != null) {
-                  final creditCardsAsync = ref.read(allCreditCardsProvider);
+                  final creditCardsAsync = ref.read(
+                    creditCardsWithDebtProvider,
+                  );
                   final allCreditCards = creditCardsAsync.maybeWhen(
                     data: (cards) => cards,
                     orElse: () => <dynamic>[],
                   );
                   final cardBelongsToNewAccount = allCreditCards.any(
                     (card) =>
-                        card.id == _creditCardAccountId && card.accountId == v,
+                        card['id'] == _creditCardAccountId &&
+                        card['account_id'] == v,
                   );
                   if (!cardBelongsToNewAccount) {
                     _creditCardAccountId = null;
@@ -836,7 +839,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Widget _buildPayCreditCardDebtSwitch(bool isDark) {
-    final creditCardsAsync = ref.watch(allCreditCardsProvider);
+    final creditCardsAsync = ref.watch(creditCardsWithDebtProvider);
     final allCreditCards = creditCardsAsync.maybeWhen(
       data: (cards) => cards,
       orElse: () => <dynamic>[],
@@ -844,7 +847,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // Filtrar tarjetas según la cuenta seleccionada
     final filteredCreditCards = _accountId != null
-        ? allCreditCards.where((card) => card.accountId == _accountId).toList()
+        ? allCreditCards
+              .where((card) => card['account_id'] == _accountId)
+              .toList()
         : allCreditCards;
 
     return Container(
@@ -935,14 +940,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   items: filteredCreditCards.map<DropdownMenuItem<String>>((
                     card,
                   ) {
-                    final debt = card.totalDebt;
+                    final debt =
+                        (card['total_debt'] as num?)?.toDouble() ?? 0.0;
                     final debtStr = NumberFormat.currency(
                       symbol: '\$',
                       decimalDigits: 0,
                     ).format(debt);
                     return DropdownMenuItem<String>(
-                      value: card.id,
-                      child: Text('${card.title} ($debtStr)'),
+                      value: card['id'] as String,
+                      child: Text('${card['title']} ($debtStr)'),
                     );
                   }).toList(),
                   onChanged: (String? value) {
@@ -960,7 +966,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Widget _buildCreditCardSwitch(bool isDark) {
-    final filteredCreditCardsAsync = ref.watch(allCreditCardsProvider);
+    final filteredCreditCardsAsync = ref.watch(creditCardsWithDebtProvider);
     final allCreditCards = filteredCreditCardsAsync.maybeWhen(
       data: (cards) => cards,
       orElse: () => <dynamic>[],
@@ -968,7 +974,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // Filtrar tarjetas según la cuenta seleccionada
     final filteredCreditCards = _accountId != null
-        ? allCreditCards.where((card) => card.accountId == _accountId).toList()
+        ? allCreditCards
+              .where((card) => card['account_id'] == _accountId)
+              .toList()
         : allCreditCards;
 
     return Container(
@@ -1057,14 +1065,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   items: filteredCreditCards.map<DropdownMenuItem<String>>((
                     card,
                   ) {
-                    final debt = card.totalDebt;
+                    final debt =
+                        (card['total_debt'] as num?)?.toDouble() ?? 0.0;
                     final debtStr = NumberFormat.currency(
                       symbol: '\$',
                       decimalDigits: 0,
                     ).format(debt);
                     return DropdownMenuItem<String>(
-                      value: card.id,
-                      child: Text('${card.title} ($debtStr)'),
+                      value: card['id'] as String,
+                      child: Text('${card['title']} ($debtStr)'),
                     );
                   }).toList(),
                   onChanged: (String? value) {
@@ -1073,10 +1082,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       // Auto-seleccionar la cuenta de la tarjeta
                       if (value != null) {
                         final selectedCard = filteredCreditCards.firstWhere(
-                          (c) => c.id == value,
+                          (c) => c['id'] == value,
                           orElse: () => filteredCreditCards.first,
                         );
-                        _accountId = selectedCard.accountId;
+                        _accountId = selectedCard['account_id'] as String?;
                       }
                     });
                   },

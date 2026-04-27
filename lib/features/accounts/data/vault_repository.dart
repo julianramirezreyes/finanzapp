@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:finanzapp_v2/core/network/dio_client.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
@@ -51,6 +50,48 @@ final vaultDebtSummaryProvider =
     ) async {
       return ref.watch(vaultRepositoryProvider).getVaultDebtSummary(accountId);
     });
+
+// Credit cards with debt info for the dropdown
+final creditCardsWithDebtProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
+  final accountsAsync = ref.watch(accountsListProvider);
+  return accountsAsync.maybeWhen(
+    data: (accounts) async {
+      final allCardsWithDebt = <Map<String, dynamic>>[];
+      for (final account in accounts) {
+        // Get both vault items and debt summary
+        final vaultRepo = ref.watch(vaultRepositoryProvider);
+        final items = await vaultRepo.getVaultItems(account.id);
+        final debts = await vaultRepo.getVaultDebtSummary(account.id);
+
+        // Filter credit cards and match with debt
+        final creditCards = items.where(
+          (item) => item.isCard && item.cardType == 'credit',
+        );
+        for (final card in creditCards) {
+          // Find matching debt (match by vault_card_id)
+          final debtInfo = debts.firstWhere(
+            (d) => d['vault_card_id'] == card.id,
+            orElse: () => <String, dynamic>{
+              'total_debt': 0.0,
+              'month_debt': 0.0,
+            },
+          );
+          allCardsWithDebt.add({
+            'id': card.id,
+            'account_id': account.id,
+            'title': card.title,
+            'total_debt': debtInfo['total_debt'] ?? 0.0,
+            'month_debt': debtInfo['month_debt'] ?? 0.0,
+          });
+        }
+      }
+      return allCardsWithDebt;
+    },
+    orElse: () => <Map<String, dynamic>>[],
+  );
+});
 
 class VaultRepository {
   final Dio _dio;
