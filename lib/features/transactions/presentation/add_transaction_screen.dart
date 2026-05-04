@@ -963,13 +963,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Widget _buildCreditCardSwitch(bool isDark) {
-    final filteredCreditCardsAsync = ref.watch(creditCardsWithDebtProvider);
+    final filteredCreditCardsAsync = ref.watch(allCreditCardsProvider);
     final allCreditCards = filteredCreditCardsAsync.maybeWhen(
       data: (cards) => cards,
       orElse: () => <dynamic>[],
     );
 
-    // SIMPLIFIED: Show all cards without filtering by account
+    // Show all credit cards without filtering
     final filteredCreditCards = allCreditCards;
 
     return Container(
