@@ -845,12 +845,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       orElse: () => <dynamic>[],
     );
 
-    // Filtrar tarjetas según la cuenta seleccionada
-    final filteredCreditCards = _accountId != null
-        ? allCreditCards
-              .where((card) => card['account_id'] == _accountId)
-              .toList()
-        : allCreditCards;
+    // SIMPLIFIED: Show all cards without filtering by account
+    final filteredCreditCards = allCreditCards;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -973,12 +969,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       orElse: () => <dynamic>[],
     );
 
-    // Filtrar tarjetas según la cuenta seleccionada
-    final filteredCreditCards = _accountId != null
-        ? allCreditCards
-              .where((card) => card['account_id'] == _accountId)
-              .toList()
-        : allCreditCards;
+    // SIMPLIFIED: Show all cards without filtering by account
+    final filteredCreditCards = allCreditCards;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
