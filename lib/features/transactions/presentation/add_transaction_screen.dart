@@ -907,7 +907,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       _paidWithCreditCard = false;
                       _excludeFromBalance = false;
                       if (filteredCreditCards.isNotEmpty) {
-                        _creditCardAccountId = filteredCreditCards.first.id;
+                        _creditCardAccountId =
+                            filteredCreditCards.first['id'] as String?;
                       }
                     } else {
                       _creditCardAccountId = null;
@@ -1030,7 +1031,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       _payingCreditCard = false;
                       _excludeFromBalance = true;
                       if (filteredCreditCards.isNotEmpty) {
-                        _creditCardAccountId = filteredCreditCards.first.id;
+                        _creditCardAccountId =
+                            filteredCreditCards.first['id'] as String?;
                       }
                       _selectionValue = 'static:Gasto general';
                     } else {

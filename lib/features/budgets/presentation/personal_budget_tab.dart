@@ -671,6 +671,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     budget: b,
                     currentAmount: b.currentAmount,
                     onTap: () => _showGoalDialog(context, ref, b),
+                    onDelete: () => _confirmDeleteBudget(context, ref, b),
                   ),
                 );
               }).toList(),
@@ -955,5 +956,54 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteBudget(
+    BuildContext context,
+    WidgetRef ref,
+    Budget b,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar Meta'),
+        content: Text(
+          '¿Estás seguro de eliminar la meta "${b.category}"?\n\n'
+          'Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(budgetRepositoryProvider).deleteBudget(b.id);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Meta eliminada')));
+        ref.invalidate(budgetsListProvider(null));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 }

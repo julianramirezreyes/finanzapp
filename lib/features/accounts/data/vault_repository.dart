@@ -160,4 +160,18 @@ class VaultRepository {
       throw Exception('Failed to fetch vault debt summary: $e');
     }
   }
+
+  Future<void> clearDebt({
+    required String accountId,
+    required String vaultCardId,
+  }) async {
+    try {
+      await _dio.post(
+        '/accounts/$accountId/vault/clear-debt',
+        data: {'vault_card_id': vaultCardId},
+      );
+    } catch (e) {
+      throw Exception('Failed to clear debt: $e');
+    }
+  }
 }

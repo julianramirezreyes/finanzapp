@@ -9,17 +9,19 @@ import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 class BudgetCard extends StatelessWidget {
   final Budget budget;
   final double currentAmount;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final double splitRatio;
   final bool showSplit;
+  final VoidCallback? onDelete; // Nuevo: callback para eliminar
 
   const BudgetCard({
     super.key,
     required this.budget,
     required this.currentAmount,
-    required this.onTap,
+    this.onTap,
     this.splitRatio = 0.5,
     this.showSplit = false,
+    this.onDelete, // Nuevo parámetro opcional
   });
 
   Color _getColor(String? colorName) {
@@ -109,7 +111,25 @@ class BudgetCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(budget.category, style: AppTypography.titleSmall),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            budget.category,
+                            style: AppTypography.titleSmall,
+                          ),
+                        ),
+                        if (onDelete != null) // Mostrar botón eliminar
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: AppColors.expense,
+                            ),
+                            onPressed: onDelete,
+                            tooltip: 'Eliminar meta',
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: AppSpacing.xs),
                     Row(
                       children: [
@@ -129,77 +149,44 @@ class BudgetCard extends StatelessWidget {
                             style: AppTypography.labelSmall,
                           ),
                         ),
+                        const Spacer(),
+                        Text(
+                          '${currency.format(currentAmount)} / ${currency.format(total)}',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
-                    if (showSplit) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        "Tú: ${currency.format(total * splitRatio)} | Pareja: ${currency.format(total * (1 - splitRatio))}",
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isExceeded)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 4),
-                          child: Icon(
-                            Icons.warning_rounded,
-                            color: AppColors.expense,
-                            size: 16,
-                          ),
-                        ),
-                      Text(
-                        currency.format(currentAmount),
-                        style: AppTypography.amountSmall.copyWith(
-                          color: isExceeded ? AppColors.expense : color,
-                        ),
-                      ),
-                    ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isExceeded
+                      ? AppColors.expense.withValues(alpha: 0.15)
+                      : progress >= 1.0
+                      ? AppColors.incomeLight
+                      : AppColors.backgroundLight,
+                  borderRadius: BorderRadius.circular(AppSpacing.xs),
+                ),
+                child: Text(
+                  isExceeded
+                      ? '+${((progress - 1) * 100).toStringAsFixed(0)}%'
+                      : '${(progress * 100).toStringAsFixed(0)}%',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isExceeded
+                        ? AppColors.expense
+                        : progress >= 1.0
+                        ? AppColors.income
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  Text(
-                    'de ${currency.format(total)}',
-                    style: AppTypography.labelSmall,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isExceeded
-                          ? AppColors.expense.withValues(alpha: 0.15)
-                          : progress >= 1.0
-                          ? AppColors.incomeLight
-                          : AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(AppSpacing.xs),
-                    ),
-                    child: Text(
-                      isExceeded
-                          ? '+${((progress - 1) * 100).toStringAsFixed(0)}%'
-                          : '${(progress * 100).toStringAsFixed(0)}%',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: isExceeded
-                            ? AppColors.expense
-                            : progress >= 1.0
-                            ? AppColors.income
-                            : AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -213,6 +200,16 @@ class BudgetCard extends StatelessWidget {
               minHeight: 8,
             ),
           ),
+          if (showSplit) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              "Tú: ${currency.format(total * splitRatio)} | Pareja: ${currency.format(total * (1 - splitRatio))}",
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
     );
