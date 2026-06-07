@@ -310,7 +310,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         TextFormField(
           initialValue: _description,
           decoration: InputDecoration(
-            hintText: '¿Qué gastaste?',
+            hintText: _type == 'income'
+                ? '¿De dónde viene el ingreso?'
+                : _type == 'transfer'
+                    ? 'Concepto de la transferencia'
+                    : '¿Qué gastaste?',
             filled: true,
             fillColor: AppColors.surfaceLight,
             border: OutlineInputBorder(
@@ -963,10 +967,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Widget _buildCreditCardSwitch(bool isDark) {
-    final filteredCreditCardsAsync = ref.watch(allCreditCardsProvider);
+    final filteredCreditCardsAsync = ref.watch(creditCardsWithDebtProvider);
     final allCreditCards = filteredCreditCardsAsync.maybeWhen(
       data: (cards) => cards,
-      orElse: () => <dynamic>[],
+      orElse: () => <Map<String, dynamic>>[],
     );
 
     // Show all credit cards without filtering
