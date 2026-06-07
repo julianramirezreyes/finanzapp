@@ -105,7 +105,7 @@ class TransactionTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          DateFormat.MMMd('es_ES').format(date),
+                          DateFormat.MMMd('es_CO').format(date),
                           style: AppTypography.labelSmall,
                         ),
                         if (contextLabel != null) ...[

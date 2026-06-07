@@ -9,7 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initSupabase();
-  await initializeDateFormatting('es_ES', null);
+  await initializeDateFormatting('es_CO', null);
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -31,8 +31,8 @@ class MyApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
-      locale: const Locale('es', 'ES'),
+      supportedLocales: const [Locale('es', 'CO'), Locale('en', 'US')],
+      locale: const Locale('es', 'CO'),
     );
   }
 }

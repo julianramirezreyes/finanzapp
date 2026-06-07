@@ -380,7 +380,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          DateFormat.yMMMd('es_ES').format(_date),
+                          DateFormat.yMMMd('es_CO').format(_date),
                           style: const TextStyle(fontSize: 15),
                         ),
                       ),

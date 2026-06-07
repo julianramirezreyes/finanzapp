@@ -6,7 +6,6 @@ import 'package:finanzapp_v2/shared/ui/widgets/transaction_tile.dart';
 
 void main() {
   setUpAll(() async {
-    await initializeDateFormatting('es_ES');
     await initializeDateFormatting('es_CO');
   });
 

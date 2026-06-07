@@ -817,7 +817,7 @@ class _HouseholdHistoryScreenState
                   ),
                   child: Text(
                     DateFormat.yMMMM(
-                      'es_ES',
+                      'es_CO',
                     ).format(_selectedDate).toUpperCase(),
                     style: TextStyle(
                       fontSize: 14,
@@ -1292,7 +1292,7 @@ class _HouseholdHistoryScreenState
                                     ),
                                   ),
                                 Text(
-                                  "${DateFormat.yMMMd('es_ES').format(item.date)} • $ownerLabel",
+                                  "${DateFormat.yMMMd('es_CO').format(item.date)} • $ownerLabel",
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textMuted,

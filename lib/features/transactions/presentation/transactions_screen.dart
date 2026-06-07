@@ -233,7 +233,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
           ),
           child: Text(
-            DateFormat.yMMMM('es_ES').format(_selectedDate).toUpperCase(),
+            DateFormat.yMMMM('es_CO').format(_selectedDate).toUpperCase(),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.w600,
