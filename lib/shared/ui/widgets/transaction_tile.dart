@@ -31,14 +31,32 @@ class TransactionTile extends StatelessWidget {
   });
 
   bool get _isIncome => type == 'income';
+  bool get _isTransfer => type == 'transfer';
 
-  Color get _iconColor => _isIncome ? AppColors.income : AppColors.expense;
+  Color get _iconColor => _isTransfer
+      ? AppColors.info
+      : _isIncome
+      ? AppColors.income
+      : AppColors.expense;
 
-  Color get _iconBackgroundColor =>
-      _isIncome ? AppColors.incomeLight : AppColors.expenseLight;
+  Color get _iconBackgroundColor => _isTransfer
+      ? AppColors.infoLight
+      : _isIncome
+      ? AppColors.incomeLight
+      : AppColors.expenseLight;
 
-  IconData get _icon =>
-      _isIncome ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+  IconData get _icon => _isTransfer
+      ? Icons.swap_horiz_rounded
+      : _isIncome
+      ? Icons.arrow_upward_rounded
+      : Icons.arrow_downward_rounded;
+
+  // Transfers move money between accounts: no +/- sign.
+  String get _amountPrefix => _isTransfer
+      ? ''
+      : _isIncome
+      ? '+ '
+      : '- ';
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +149,7 @@ class TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${_isIncome ? '+' : '-'} ${currencyFormat.format(amount)}',
+                    '$_amountPrefix${currencyFormat.format(amount)}',
                     style: AppTypography.amountSmall.copyWith(
                       color: _iconColor,
                       fontWeight: FontWeight.w600,
