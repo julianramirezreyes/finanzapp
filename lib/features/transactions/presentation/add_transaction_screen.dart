@@ -1260,23 +1260,30 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               const SnackBar(content: Text('Transacción actualizada')),
             );
           }
-        } else {
-          // If paying credit card (reducing debt), call payCreditCard endpoint
-          if (_payingCreditCard &&
-              _creditCardAccountId != null &&
-              _accountId != null &&
-              _amount > 0) {
-            await ref
-                .read(transactionRepositoryProvider)
-                .payCreditCard(
-                  creditCardAccountId: _creditCardAccountId!,
-                  amount: _amount,
-                  accountId: _accountId!,
-                  date: _date,
-                  description: 'Pago de deuda tarjeta',
-                );
+        } else if (_payingCreditCard &&
+            _creditCardAccountId != null &&
+            _accountId != null &&
+            _amount > 0) {
+          // Paying down a card: record ONLY the payment. The backend keys the
+          // effect to the card and subtracts the cash itself. Creating a twin
+          // generic transaction here would re-add the debt (double-write).
+          await ref
+              .read(transactionRepositoryProvider)
+              .payCreditCard(
+                vaultCardId: _creditCardAccountId!,
+                amount: _amount,
+                accountId: _accountId!,
+                date: _date,
+                description: _description.isNotEmpty
+                    ? _description
+                    : 'Pago de deuda tarjeta',
+              );
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Pago registrado')));
           }
-
+        } else {
           await ref
               .read(transactionRepositoryProvider)
               .createTransaction(
@@ -1296,14 +1303,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     ? _paidWithCreditCard
                     : false,
                 creditCardAccountId: null,
-                vaultCardId:
-                    _type == 'expense' &&
-                        (_paidWithCreditCard || _payingCreditCard)
+                vaultCardId: _type == 'expense' && _paidWithCreditCard
                     ? _creditCardAccountId
                     : null,
-                installments: _paidWithCreditCard || _payingCreditCard
-                    ? _installments
-                    : 1,
+                installments: _paidWithCreditCard ? _installments : 1,
               );
           if (mounted) {
             ScaffoldMessenger.of(

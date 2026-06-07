@@ -3,8 +3,8 @@ import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/pocket.dart';
+import 'package:finanzapp_v2/features/accounts/presentation/pay_debt_dialog.dart';
 import 'package:finanzapp_v2/features/dashboard/data/dashboard_provider.dart';
-import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -259,6 +259,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               ...debtList.map((debt) {
+                final vaultCardId = debt['vault_card_id'] as String?;
                 final cardTitle = debt['card_title'] as String? ?? 'Unknown';
                 final cardDebt = (debt['total_debt'] as num?)?.toDouble() ?? 0;
                 final cardMonthDebt =
@@ -323,6 +324,28 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                             ),
                         ],
                       ),
+                      if (vaultCardId != null && cardDebt > 0) ...[
+                        const SizedBox(width: AppSpacing.md),
+                        TextButton.icon(
+                          onPressed: () => _payDebt(
+                            vaultCardId: vaultCardId,
+                            cardTitle: cardTitle,
+                            cardDebt: cardDebt,
+                          ),
+                          icon: const Icon(
+                            Icons.payments_outlined,
+                            size: AppSpacing.iconSizeSmall,
+                          ),
+                          label: const Text('Pagar'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -672,6 +695,34 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _payDebt({
+    required String vaultCardId,
+    required String cardTitle,
+    required double cardDebt,
+  }) async {
+    final paid = await showDialog<bool>(
+      context: context,
+      builder: (_) => PayDebtDialog(
+        vaultCardId: vaultCardId,
+        cardTitle: cardTitle,
+        cardDebt: cardDebt,
+      ),
+    );
+
+    if (paid == true) {
+      // Refresh the OWNER account's debt summary (keyed by widget.accountId,
+      // the account that holds this vault), NOT the paying source account.
+      ref.invalidate(vaultDebtSummaryProvider(widget.accountId));
+      ref.invalidate(vaultItemsProvider(widget.accountId));
+      ref.invalidate(accountsListProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Pago registrado')));
+      }
+    }
   }
 }
 
@@ -1497,165 +1548,5 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
       builder: (context) =>
           _VaultItemEditDialog(accountId: widget.accountId, item: item),
     );
-  }
-}
-
-// Dialog para pagar tarjeta de crédito
-class _PayCardDialog extends ConsumerStatefulWidget {
-  final String accountId;
-  final String accountName;
-
-  const _PayCardDialog({required this.accountId, required this.accountName});
-
-  @override
-  ConsumerState<_PayCardDialog> createState() => _PayCardDialogState();
-}
-
-class _PayCardDialogState extends ConsumerState<_PayCardDialog> {
-  final _amountController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  String? _selectedAccountId;
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountsListProvider);
-    final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-
-    return AlertDialog(
-      title: const Text('Pagar Tarjeta'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Selecciona la cuenta desde la cual harás el pago:',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            accountsAsync.when(
-              data: (accounts) {
-                // Filtrar cuentas que no sean de crédito (no podemos pagar desde la misma tarjeta)
-                final nonCreditAccounts = accounts
-                    .where((a) => a.type != 'credit')
-                    .toList();
-
-                if (nonCreditAccounts.isEmpty) {
-                  return Text(
-                    'No hay cuentas disponibles para realizar el pago',
-                    style: TextStyle(color: AppColors.warning),
-                  );
-                }
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.borderLight),
-                    borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedAccountId,
-                      isExpanded: true,
-                      hint: const Text('Seleccionar cuenta'),
-                      items: nonCreditAccounts.map((account) {
-                        return DropdownMenuItem<String>(
-                          value: account.id,
-                          child: Text(
-                            '${account.name} (${currency.format(account.balance)})',
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedAccountId = value;
-                        });
-                      },
-                    ),
-                  ),
-                );
-              },
-              loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text('Error: $e'),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextField(
-              controller: _amountController,
-              decoration: const InputDecoration(
-                labelText: 'Monto a pagar',
-                prefixIcon: Icon(Icons.attach_money),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (opcional)',
-                prefixIcon: Icon(Icons.description),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _selectedAccountId != null ? _pay : null,
-          child: const Text('Pagar'),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _pay() async {
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingrese un monto válido')));
-      return;
-    }
-
-    try {
-      await ref
-          .read(transactionRepositoryProvider)
-          .payCreditCard(
-            creditCardAccountId: widget.accountId,
-            amount: amount,
-            accountId: _selectedAccountId!,
-            date: DateTime.now(),
-            description: _descriptionController.text.isNotEmpty
-                ? _descriptionController.text
-                : null,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pago realizado correctamente')),
-        );
-        // Refresh debt summary
-        ref.invalidate(debtSummaryProvider(widget.accountId));
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
   }
 }

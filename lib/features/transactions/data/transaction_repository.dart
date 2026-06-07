@@ -134,9 +134,11 @@ class TransactionRepository {
     }
   }
 
-  // Pay credit card - creates income transaction that reduces debt
+  // Pay credit card - records a payment (expense from the source account)
+  // that reduces the target card's derived debt. The payment is keyed to the
+  // card via [vaultCardId]; the backend rejects a request without it (HTTP 400).
   Future<void> payCreditCard({
-    required String creditCardAccountId,
+    required String vaultCardId,
     required double amount,
     required String accountId,
     required DateTime date,
@@ -146,7 +148,7 @@ class TransactionRepository {
       await _dio.post(
         '/transactions/pay-credit',
         data: {
-          'credit_card_account_id': creditCardAccountId,
+          'vault_card_id': vaultCardId,
           'amount': amount,
           'account_id': accountId,
           'date': date.toUtc().toIso8601String(),
