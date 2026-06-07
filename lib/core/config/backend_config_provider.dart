@@ -80,14 +80,34 @@ class DioClientNotifier extends Notifier<Dio> {
 
     dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) async {
+        onRequest: (options, handler) {
           final session = Supabase.instance.client.auth.currentSession;
           if (session != null) {
             options.headers['Authorization'] = 'Bearer ${session.accessToken}';
           }
           return handler.next(options);
         },
-        onError: (DioException error, handler) {
+        onError: (DioException error, handler) async {
+          // A 401 usually means the access token expired (or wasn't refreshed yet
+          // at startup). Refresh the Supabase session ONCE and retry the original
+          // request — onRequest re-attaches the fresh token. Guarded against loops
+          // via the __retried401 flag, so a genuinely-dead session still surfaces
+          // the 401 instead of looping.
+          final is401 = error.response?.statusCode == 401;
+          final alreadyRetried =
+              error.requestOptions.extra['__retried401'] == true;
+          if (is401 && !alreadyRetried) {
+            try {
+              await Supabase.instance.client.auth.refreshSession();
+              final opts = error.requestOptions;
+              opts.extra = {...opts.extra, '__retried401': true};
+              final response = await dio.fetch(opts);
+              return handler.resolve(response);
+            } catch (_) {
+              // Refresh/retry failed (session truly gone) — surface the original
+              // error so the UI can react instead of hanging.
+            }
+          }
           return handler.next(error);
         },
       ),
