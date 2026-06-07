@@ -39,7 +39,7 @@ class Budget {
       id: json['id'],
       userId: json['user_id'],
       category: json['category'],
-      limitAmount: (json['limit_amount'] ?? json['amount'] as num).toDouble(),
+      limitAmount: ((json['limit_amount'] ?? json['amount']) as num).toDouble(),
       period: json['period'],
       type: json['type'] ?? 'expense',
       targetAmount: json['target_amount'] != null

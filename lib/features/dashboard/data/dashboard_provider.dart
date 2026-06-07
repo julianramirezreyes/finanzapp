@@ -1,6 +1,7 @@
 import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
+import 'package:finanzapp_v2/features/accounts/domain/pocket.dart';
 import 'package:finanzapp_v2/features/history/data/history_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,7 +53,7 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
         return MapEntry(acc.id, pockets);
       }),
     ),
-  ).catchError((_) => <MapEntry>[]);
+  ).catchError((_) => <MapEntry<String, List<Pocket>>>[]);
 
   final pocketsTotals = <String, double>{};
   final pocketsCounts = <String, int>{};
