@@ -1326,11 +1326,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ref.invalidate(budgetsListProvider);
         ref.invalidate(householdSnapshotProvider);
 
-        // Invalidate credit card debt so it recalculates
-        if (_payingCreditCard &&
-            _creditCardAccountId != null &&
-            _accountId != null) {
-          ref.invalidate(vaultDebtSummaryProvider(_accountId!));
+        // The card's debt is keyed by its OWNER account, not the paying account.
+        // Invalidate every debt summary and the cards-with-debt list so the paid
+        // card refreshes no matter which account holds it.
+        if (_payingCreditCard && _creditCardAccountId != null) {
+          ref.invalidate(vaultDebtSummaryProvider);
+          ref.invalidate(creditCardsWithDebtProvider);
         }
 
         if (mounted) {
