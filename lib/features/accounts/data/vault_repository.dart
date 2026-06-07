@@ -29,18 +29,22 @@ final creditCardsProvider = FutureProvider.family<List<VaultItem>, String>((
 });
 
 final allCreditCardsProvider = FutureProvider<List<VaultItem>>((ref) async {
-  final accountsAsync = ref.watch(accountsListProvider);
-  return accountsAsync.maybeWhen(
-    data: (accounts) async {
-      final allCards = <VaultItem>[];
-      for (final account in accounts) {
-        final cards = await ref.watch(creditCardsProvider(account.id).future);
-        allCards.addAll(cards);
-      }
-      return allCards;
-    },
-    orElse: () => <VaultItem>[],
-  );
+  // Await the accounts future so this provider stays in `loading` until they
+  // resolve and propagates a real error if they fail — instead of silently
+  // emitting an empty list while accounts are still loading.
+  final accounts = await ref.watch(accountsListProvider.future);
+  final allCards = <VaultItem>[];
+  for (final account in accounts) {
+    try {
+      final cards = await ref.watch(creditCardsProvider(account.id).future);
+      allCards.addAll(cards);
+    } catch (_) {
+      // A single account whose vault fails to load must not empty the whole
+      // list. Skip it and keep the cards from the accounts that did load.
+      continue;
+    }
+  }
+  return allCards;
 });
 
 final vaultDebtSummaryProvider =
@@ -55,42 +59,42 @@ final vaultDebtSummaryProvider =
 final creditCardsWithDebtProvider = FutureProvider<List<Map<String, dynamic>>>((
   ref,
 ) async {
-  final accountsAsync = ref.watch(accountsListProvider);
-  return accountsAsync.maybeWhen(
-    data: (accounts) async {
-      final allCardsWithDebt = <Map<String, dynamic>>[];
-      for (final account in accounts) {
-        // Get both vault items and debt summary
-        final vaultRepo = ref.watch(vaultRepositoryProvider);
-        final items = await vaultRepo.getVaultItems(account.id);
-        final debts = await vaultRepo.getVaultDebtSummary(account.id);
+  // Await the accounts future (don't collapse loading/error to []). Stays in
+  // `loading` until accounts resolve and surfaces a real error if they fail.
+  final accounts = await ref.watch(accountsListProvider.future);
+  final vaultRepo = ref.watch(vaultRepositoryProvider);
+  final allCardsWithDebt = <Map<String, dynamic>>[];
+  for (final account in accounts) {
+    try {
+      // Get both vault items and debt summary
+      final items = await vaultRepo.getVaultItems(account.id);
+      final debts = await vaultRepo.getVaultDebtSummary(account.id);
 
-        // Filter credit cards and match with debt
-        final creditCards = items.where(
-          (item) => item.isCard && item.cardType == 'credit',
+      // Filter credit cards and match with debt
+      final creditCards = items.where(
+        (item) => item.isCard && item.cardType == 'credit',
+      );
+      for (final card in creditCards) {
+        // Find matching debt (match by vault_card_id)
+        final debtInfo = debts.firstWhere(
+          (d) => d['vault_card_id'] == card.id,
+          orElse: () => <String, dynamic>{'total_debt': 0.0, 'month_debt': 0.0},
         );
-        for (final card in creditCards) {
-          // Find matching debt (match by vault_card_id)
-          final debtInfo = debts.firstWhere(
-            (d) => d['vault_card_id'] == card.id,
-            orElse: () => <String, dynamic>{
-              'total_debt': 0.0,
-              'month_debt': 0.0,
-            },
-          );
-          allCardsWithDebt.add({
-            'id': card.id,
-            'account_id': account.id,
-            'title': card.title,
-            'total_debt': debtInfo['total_debt'] ?? 0.0,
-            'month_debt': debtInfo['month_debt'] ?? 0.0,
-          });
-        }
+        allCardsWithDebt.add({
+          'id': card.id,
+          'account_id': account.id,
+          'title': card.title,
+          'total_debt': debtInfo['total_debt'] ?? 0.0,
+          'month_debt': debtInfo['month_debt'] ?? 0.0,
+        });
       }
-      return allCardsWithDebt;
-    },
-    orElse: () => <Map<String, dynamic>>[],
-  );
+    } catch (_) {
+      // A single account whose vault/debt call fails (e.g. a transient 401)
+      // must not empty the whole dropdown. Skip it and keep the rest.
+      continue;
+    }
+  }
+  return allCardsWithDebt;
 });
 
 class VaultRepository {

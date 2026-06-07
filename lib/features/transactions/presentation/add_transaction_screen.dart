@@ -844,13 +844,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _buildPayCreditCardDebtSwitch(bool isDark) {
     final creditCardsAsync = ref.watch(creditCardsWithDebtProvider);
-    final allCreditCards = creditCardsAsync.maybeWhen(
-      data: (cards) => cards,
-      orElse: () => <dynamic>[],
-    );
-
-    // SIMPLIFIED: Show all cards without filtering by account
-    final filteredCreditCards = allCreditCards;
+    // Read the data if present; loading/error are surfaced by the status footer
+    // below instead of being silently coerced to an empty list.
+    final filteredCreditCards =
+        creditCardsAsync.valueOrNull ?? <Map<String, dynamic>>[];
+    final dropdownValue =
+        filteredCreditCards.any((c) => c['id'] == _creditCardAccountId)
+        ? _creditCardAccountId
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -934,8 +935,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  key: ValueKey('pay_tc_select_$_creditCardAccountId'),
-                  value: _creditCardAccountId,
+                  key: ValueKey('pay_tc_select_$dropdownValue'),
+                  value: dropdownValue,
                   isExpanded: true,
                   hint: const Text('Seleccionar tarjeta'),
                   items: filteredCreditCards.map<DropdownMenuItem<String>>((
@@ -961,6 +962,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ),
             ),
           ],
+          _creditCardStatusFooter(creditCardsAsync, _payingCreditCard),
         ],
       ),
     );
@@ -968,13 +970,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _buildCreditCardSwitch(bool isDark) {
     final filteredCreditCardsAsync = ref.watch(creditCardsWithDebtProvider);
-    final allCreditCards = filteredCreditCardsAsync.maybeWhen(
-      data: (cards) => cards,
-      orElse: () => <Map<String, dynamic>>[],
-    );
-
-    // Show all credit cards without filtering
-    final filteredCreditCards = allCreditCards;
+    final filteredCreditCards =
+        filteredCreditCardsAsync.valueOrNull ?? <Map<String, dynamic>>[];
+    final dropdownValue =
+        filteredCreditCards.any((c) => c['id'] == _creditCardAccountId)
+        ? _creditCardAccountId
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -1056,8 +1057,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  key: ValueKey('tc_select_$_creditCardAccountId'),
-                  value: _creditCardAccountId,
+                  key: ValueKey('tc_select_$dropdownValue'),
+                  value: dropdownValue,
                   isExpanded: true,
                   hint: const Text('Seleccionar tarjeta'),
                   items: filteredCreditCards.map<DropdownMenuItem<String>>((
@@ -1107,18 +1108,74 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ],
             ),
           ],
-          if (_paidWithCreditCard && filteredCreditCards.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+          _creditCardStatusFooter(filteredCreditCardsAsync, _paidWithCreditCard),
+        ],
+      ),
+    );
+  }
+
+  // Footer that distinguishes "no cards" from "still loading" / "failed to load",
+  // so a transient failure no longer masquerades as "no hay tarjetas".
+  Widget _creditCardStatusFooter(
+    AsyncValue<List<Map<String, dynamic>>> cardsAsync,
+    bool toggleOn,
+  ) {
+    if (!toggleOn) return const SizedBox.shrink();
+    return cardsAsync.when(
+      data: (cards) {
+        if (cards.isNotEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.sm),
+          child: Text(
+            'No hay tarjetas de crédito registradas en la bóveda',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.warning,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
+      },
+      loading: () => Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: AppSpacing.sm),
             Text(
-              'No hay tarjetas de crédito registradas en la bóveda',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.warning,
-                fontStyle: FontStyle.italic,
-              ),
+              'Cargando tarjetas...',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
-        ],
+        ),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'No se pudieron cargar las tarjetas',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.expense,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                ref.invalidate(accountsListProvider);
+                ref.invalidate(creditCardsWithDebtProvider);
+              },
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
       ),
     );
   }
