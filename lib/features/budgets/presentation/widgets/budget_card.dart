@@ -9,10 +9,11 @@ import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 class BudgetCard extends StatelessWidget {
   final Budget budget;
   final double currentAmount;
-  final VoidCallback? onTap;
+  final VoidCallback? onTap; // Tap en la card -> abrir historial de registros
   final double splitRatio;
   final bool showSplit;
-  final VoidCallback? onDelete; // Nuevo: callback para eliminar
+  final VoidCallback? onEdit; // Menú ⋮ -> Editar
+  final VoidCallback? onDelete; // Menú ⋮ -> Eliminar
 
   const BudgetCard({
     super.key,
@@ -21,7 +22,8 @@ class BudgetCard extends StatelessWidget {
     this.onTap,
     this.splitRatio = 0.5,
     this.showSplit = false,
-    this.onDelete, // Nuevo parámetro opcional
+    this.onEdit,
+    this.onDelete,
   });
 
   Color _getColor(String? colorName) {
@@ -119,14 +121,53 @@ class BudgetCard extends StatelessWidget {
                             style: AppTypography.titleSmall,
                           ),
                         ),
-                        if (onDelete != null) // Mostrar botón eliminar
-                          IconButton(
+                        if (onEdit != null || onDelete != null)
+                          PopupMenuButton<String>(
                             icon: const Icon(
-                              Icons.delete,
-                              color: AppColors.expense,
+                              Icons.more_vert,
+                              color: AppColors.textMuted,
                             ),
-                            onPressed: onDelete,
-                            tooltip: 'Eliminar meta',
+                            tooltip: 'Opciones',
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                onEdit?.call();
+                              } else if (value == 'delete') {
+                                onDelete?.call();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (onEdit != null)
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit, size: 18),
+                                      SizedBox(width: 8),
+                                      Text('Editar'),
+                                    ],
+                                  ),
+                                ),
+                              if (onDelete != null)
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete,
+                                        size: 18,
+                                        color: AppColors.expense,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Eliminar',
+                                        style: TextStyle(
+                                          color: AppColors.expense,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
                       ],
                     ),

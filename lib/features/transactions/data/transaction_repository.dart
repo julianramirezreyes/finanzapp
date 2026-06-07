@@ -16,6 +16,7 @@ class TransactionRepository {
   Future<List<Transaction>> getTransactions({
     DateTime? startDate,
     DateTime? endDate,
+    String? budgetId,
     int limit = 50,
   }) async {
     try {
@@ -25,6 +26,9 @@ class TransactionRepository {
       }
       if (endDate != null) {
         queryParams['end_date'] = endDate.toIso8601String();
+      }
+      if (budgetId != null) {
+        queryParams['budget_id'] = budgetId;
       }
 
       final response = await _dio.get(

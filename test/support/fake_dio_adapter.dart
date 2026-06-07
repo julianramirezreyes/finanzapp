@@ -8,11 +8,15 @@ class CapturedRequest {
   CapturedRequest({
     required this.method,
     required this.path,
+    required this.uri,
     required this.body,
   });
 
   final String method;
   final String path;
+
+  /// Full request URI, including query parameters (assert on [uri.queryParameters]).
+  final Uri uri;
   final dynamic body;
 
   /// Convenience accessor for JSON object bodies.
@@ -60,6 +64,7 @@ class FakeDioAdapter implements HttpClientAdapter {
       CapturedRequest(
         method: options.method,
         path: options.path,
+        uri: options.uri,
         body: options.data,
       ),
     );

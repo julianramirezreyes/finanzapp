@@ -8,6 +8,7 @@ import 'package:finanzapp_v2/features/auth/presentation/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
@@ -670,7 +671,12 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                   child: BudgetCard(
                     budget: b,
                     currentAmount: b.currentAmount,
-                    onTap: () => _showGoalDialog(context, ref, b),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BudgetHistoryScreen(budget: b),
+                      ),
+                    ),
+                    onEdit: () => _showGoalDialog(context, ref, b),
                     onDelete: () => _confirmDeleteBudget(context, ref, b),
                   ),
                 );

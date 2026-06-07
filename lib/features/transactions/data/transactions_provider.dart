@@ -8,3 +8,10 @@ final transactionsListProvider = FutureProvider.autoDispose<List<Transaction>>((
   final repository = ref.watch(transactionRepositoryProvider);
   return repository.getTransactions();
 });
+
+/// Transactions linked to a specific budget/goal — powers the per-goal history.
+final budgetTransactionsProvider = FutureProvider.autoDispose
+    .family<List<Transaction>, String>((ref, budgetId) async {
+      final repository = ref.watch(transactionRepositoryProvider);
+      return repository.getTransactions(budgetId: budgetId, limit: 200);
+    });
