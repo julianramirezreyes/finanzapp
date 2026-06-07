@@ -99,7 +99,7 @@ void main() {
   });
 
   testWidgets(
-    'delete blocked with 409 shows the backend message and does NOT invalidate '
+    'delete blocked with 409 offers to settle & archive and does NOT invalidate '
     'the items list',
     (tester) async {
       final result = await _pumpAndDelete(
@@ -109,12 +109,13 @@ void main() {
             'No puedes eliminar una tarjeta con movimientos asociados\n',
       );
 
-      // The backend message must be surfaced in a SnackBar.
+      // Instead of a dead-end message, the user is offered to settle & archive.
+      expect(find.text('La tarjeta tiene movimientos'), findsOneWidget);
       expect(
-        find.text('No puedes eliminar una tarjeta con movimientos asociados'),
+        find.widgetWithText(TextButton, 'Saldar y archivar'),
         findsOneWidget,
       );
-      // The list was loaded once and NOT invalidated (no re-fetch).
+      // The list has not been invalidated yet (the user hasn't chosen).
       expect(result.itemFetches, 1);
     },
   );

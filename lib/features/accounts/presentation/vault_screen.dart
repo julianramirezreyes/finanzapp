@@ -1544,28 +1544,72 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
         ref.invalidate(vaultItemsProvider(accountId));
         ref.invalidate(vaultDebtSummaryProvider(accountId));
       } on DioException catch (e) {
-        // 409: the card has movements; the backend blocks the delete. Surface
-        // the message and keep the card in the list (no invalidation).
         if (!context.mounted) return;
-        final message = e.response?.statusCode == 409
-            ? _deleteConflictMessage(e)
-            : 'No se pudo eliminar el ítem. Intenta de nuevo.';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        if (e.response?.statusCode == 409) {
+          // The card has movements, so it cannot be hard-deleted without losing
+          // history. Offer to settle its debt (no cash moved) and archive it.
+          await _offerSettleAndArchive(context, accountId, itemId);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo eliminar el ítem. Intenta de nuevo.'),
+            ),
+          );
+        }
       }
     }
   }
 
-  String _deleteConflictMessage(DioException e) {
-    final data = e.response?.data;
-    if (data is String && data.trim().isNotEmpty) {
-      return data.trim();
+  Future<void> _offerSettleAndArchive(
+    BuildContext context,
+    String accountId,
+    String itemId,
+  ) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('La tarjeta tiene movimientos'),
+        content: const Text(
+          'No se puede borrar sin perder el historial. ¿Querés saldar su deuda '
+          '(sin descontar de tus cuentas) y archivar la tarjeta? Es reversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Saldar y archivar'),
+          ),
+        ],
+      ),
+    );
+    if (go != true) return;
+    try {
+      final repo = ref.read(vaultRepositoryProvider);
+      await repo.settleCardDebt(accountId, itemId);
+      await repo.archiveCard(accountId, itemId);
+      ref.invalidate(vaultItemsProvider(accountId));
+      ref.invalidate(vaultDebtSummaryProvider(accountId));
+      ref.invalidate(creditCardsWithDebtProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deuda saldada y tarjeta archivada')),
+      );
+    } catch (_) {
+      // settle may have succeeded even if archive failed, so re-fetch: the UI
+      // then reflects the real (possibly now-zero) debt instead of a stale value.
+      ref.invalidate(vaultItemsProvider(accountId));
+      ref.invalidate(vaultDebtSummaryProvider(accountId));
+      ref.invalidate(creditCardsWithDebtProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo saldar/archivar. Intenta de nuevo.'),
+        ),
+      );
     }
-    if (data is Map && data['error'] is String) {
-      return (data['error'] as String).trim();
-    }
-    return 'No puedes eliminar una tarjeta con movimientos asociados';
   }
 
   void _showEditDialog(BuildContext context, dynamic item) {

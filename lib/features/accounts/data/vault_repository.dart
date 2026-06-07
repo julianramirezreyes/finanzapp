@@ -140,6 +140,30 @@ class VaultRepository {
     }
   }
 
+  /// Drives the card's derived debt to zero without moving cash — the backend
+  /// writes a forgiveness row (exclude_from_balance). Returns the settled amount.
+  Future<double> settleCardDebt(String accountId, String itemId) async {
+    try {
+      final response = await _dio.post(
+        '/accounts/$accountId/vault/$itemId/settle',
+      );
+      final amount = (response.data?['settled_amount'] as num?)?.toDouble();
+      return amount ?? 0.0;
+    } catch (e) {
+      throw Exception('Failed to settle card debt: $e');
+    }
+  }
+
+  /// Archives (soft-deletes) the card so it disappears from the vault and the
+  /// debt rollups, without destroying its transaction history.
+  Future<void> archiveCard(String accountId, String itemId) async {
+    try {
+      await _dio.post('/accounts/$accountId/vault/$itemId/archive');
+    } catch (e) {
+      throw Exception('Failed to archive card: $e');
+    }
+  }
+
   Future<void> updateVaultItem(
     String accountId,
     String itemId,
