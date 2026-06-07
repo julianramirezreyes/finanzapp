@@ -2,7 +2,6 @@ export 'widgets/app_card.dart';
 export 'widgets/balance_card.dart';
 export 'widgets/summary_tile.dart';
 export 'widgets/empty_state.dart';
-export 'widgets/amount_display.dart';
 export 'widgets/loading_indicator.dart';
 export 'widgets/transaction_tile.dart';
 export 'widgets/account_tile.dart';
