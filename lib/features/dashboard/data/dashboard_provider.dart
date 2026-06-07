@@ -40,7 +40,10 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
   // Wait for both to complete
   final accounts = await accountsFuture;
   final yearlySummary = await historyFuture;
-  final totalBalance = accounts.fold(0.0, (sum, acc) => sum + acc.balance);
+  // Net worth excludes accounts the user flagged out (e.g. shared/credit cards).
+  final totalBalance = accounts
+      .where((acc) => acc.includeInNetWorth)
+      .fold(0.0, (sum, acc) => sum + acc.balance);
 
   // Fetch all pockets in parallel
   final pocketResults = await Future.wait(
