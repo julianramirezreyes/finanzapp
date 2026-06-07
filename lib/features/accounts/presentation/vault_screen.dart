@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
@@ -1535,11 +1536,36 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
     );
 
     if (confirmed == true) {
-      await ref
-          .read(vaultRepositoryProvider)
-          .deleteVaultItem(accountId, itemId);
-      ref.invalidate(vaultItemsProvider(accountId));
+      try {
+        await ref
+            .read(vaultRepositoryProvider)
+            .deleteVaultItem(accountId, itemId);
+        // Only refresh the list when the server actually deleted the item.
+        ref.invalidate(vaultItemsProvider(accountId));
+        ref.invalidate(vaultDebtSummaryProvider(accountId));
+      } on DioException catch (e) {
+        // 409: the card has movements; the backend blocks the delete. Surface
+        // the message and keep the card in the list (no invalidation).
+        if (!context.mounted) return;
+        final message = e.response?.statusCode == 409
+            ? _deleteConflictMessage(e)
+            : 'No se pudo eliminar el ítem. Intenta de nuevo.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
     }
+  }
+
+  String _deleteConflictMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+    if (data is Map && data['error'] is String) {
+      return (data['error'] as String).trim();
+    }
+    return 'No puedes eliminar una tarjeta con movimientos asociados';
   }
 
   void _showEditDialog(BuildContext context, dynamic item) {

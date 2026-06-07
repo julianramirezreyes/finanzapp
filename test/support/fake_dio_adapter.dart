@@ -30,6 +30,7 @@ class FakeDioAdapter implements HttpClientAdapter {
     required this.statusCode,
     this.responseJson,
     this.responseList,
+    this.responseText,
   });
 
   /// The HTTP status code every request resolves to.
@@ -40,6 +41,9 @@ class FakeDioAdapter implements HttpClientAdapter {
 
   /// JSON array body returned to the client.
   final List<dynamic>? responseList;
+
+  /// Plain-text body returned to the client (e.g. Go's `http.Error`).
+  final String? responseText;
 
   /// All requests that passed through this adapter, in order.
   final List<CapturedRequest> requests = <CapturedRequest>[];
@@ -61,19 +65,26 @@ class FakeDioAdapter implements HttpClientAdapter {
     );
 
     final String payload;
-    if (responseList != null) {
+    final String contentType;
+    if (responseText != null) {
+      payload = responseText!;
+      contentType = Headers.textPlainContentType;
+    } else if (responseList != null) {
       payload = jsonEncode(responseList);
+      contentType = Headers.jsonContentType;
     } else if (responseJson != null) {
       payload = jsonEncode(responseJson);
+      contentType = Headers.jsonContentType;
     } else {
       payload = '';
+      contentType = Headers.jsonContentType;
     }
 
     return ResponseBody.fromString(
       payload,
       statusCode,
       headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
+        Headers.contentTypeHeader: [contentType],
       },
     );
   }

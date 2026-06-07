@@ -126,6 +126,11 @@ class VaultRepository {
   Future<void> deleteVaultItem(String accountId, String itemId) async {
     try {
       await _dio.delete('/accounts/$accountId/vault/$itemId');
+    } on DioException {
+      // Rethrow so the caller can read response.statusCode (e.g. 409 when the
+      // card has movements) and show the backend message. Wrapping it in a
+      // generic Exception would discard the status the UI needs.
+      rethrow;
     } catch (e) {
       throw Exception('Failed to delete vault item: $e');
     }
@@ -158,20 +163,6 @@ class VaultRepository {
           .toList();
     } catch (e) {
       throw Exception('Failed to fetch vault debt summary: $e');
-    }
-  }
-
-  Future<void> clearDebt({
-    required String accountId,
-    required String vaultCardId,
-  }) async {
-    try {
-      await _dio.post(
-        '/accounts/$accountId/vault/clear-debt',
-        data: {'vault_card_id': vaultCardId},
-      );
-    } catch (e) {
-      throw Exception('Failed to clear debt: $e');
     }
   }
 }
