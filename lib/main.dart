@@ -1,5 +1,6 @@
 import 'package:finanzapp_v2/core/config/supabase_config.dart';
 import 'package:finanzapp_v2/core/theme/app_theme.dart';
+import 'package:finanzapp_v2/core/theme/theme_mode_provider.dart';
 import 'package:finanzapp_v2/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,12 +20,13 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'FinanzApp v2',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

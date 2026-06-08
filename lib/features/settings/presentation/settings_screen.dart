@@ -1,4 +1,5 @@
 import 'package:finanzapp_v2/features/settings/presentation/widgets/backend_config_card.dart';
+import 'package:finanzapp_v2/features/settings/presentation/widgets/theme_toggle_card.dart';
 import 'package:flutter/material.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
@@ -22,6 +23,8 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const ThemeToggleCard(),
+            const SizedBox(height: AppSpacing.lg),
             const BackendConfigCard(),
             const SizedBox(height: AppSpacing.lg),
             _buildInfoCard(isDark),
