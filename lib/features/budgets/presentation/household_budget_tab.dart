@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
@@ -750,6 +751,12 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     ),
                     onEdit: () =>
                         _showEditGoalDialog(context, ref, householdId, b),
+                    onDelete: () => confirmDeleteBudget(
+                      context,
+                      ref,
+                      b,
+                      invalidateTarget: budgetsListProvider(householdId),
+                    ),
                     splitRatio: splitRatio,
                     showSplit: true,
                   ),
