@@ -1,4 +1,6 @@
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
+import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_dio_adapter.dart';
@@ -25,6 +27,28 @@ void main() {
 
       final req = adapter.lastRequest;
       expect(req.uri.queryParameters.containsKey('budget_id'), isFalse);
+    });
+  });
+
+  group('budgetTransactionsProvider builds the per-goal history query', () {
+    test('requests GET /transactions?budget_id=...&limit=200', () async {
+      final adapter = FakeDioAdapter(statusCode: 200, responseList: []);
+      final container = ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(
+            TransactionRepository(buildFakeDio(adapter)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(budgetTransactionsProvider('goal-99').future);
+
+      final req = adapter.lastRequest;
+      expect(req.method, 'GET');
+      expect(req.path, '/transactions');
+      expect(req.uri.queryParameters['budget_id'], 'goal-99');
+      expect(req.uri.queryParameters['limit'], '200');
     });
   });
 }

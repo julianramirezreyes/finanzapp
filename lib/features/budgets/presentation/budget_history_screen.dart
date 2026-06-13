@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
@@ -97,6 +98,10 @@ class BudgetHistoryScreen extends ConsumerWidget {
                       type: t.type,
                       date: t.date,
                       contextLabel: t.paidWithCreditCard ? 'Tarjeta' : null,
+                      onTap: () async {
+                        await context.push('/transactions/add', extra: t);
+                        ref.invalidate(budgetTransactionsProvider(budget.id));
+                      },
                     );
                   },
                 );
