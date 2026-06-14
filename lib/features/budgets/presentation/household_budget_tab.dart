@@ -8,6 +8,7 @@ import 'package:finanzapp_v2/features/auth/presentation/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_form_dialog.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
@@ -794,88 +795,42 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     String householdId,
     Budget? existing,
   ) {
-    final nameController = TextEditingController(text: existing?.category);
-    final amountController = TextEditingController(
-      text: existing?.monthlyQuota.toStringAsFixed(0),
-    );
-    String type = existing?.type ?? 'expense';
-
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(existing == null ? 'Nueva Meta' : 'Editar Meta'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Monto Mensual'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                initialValue: type,
-                decoration: const InputDecoration(labelText: 'Tipo'),
-                items: const [
-                  DropdownMenuItem(value: 'expense', child: Text('Gasto')),
-                  DropdownMenuItem(value: 'saving', child: Text('Ahorro')),
-                  DropdownMenuItem(
-                    value: 'investment',
-                    child: Text('Inversión'),
-                  ),
-                ],
-                onChanged: (v) => type = v ?? 'expense',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text;
-              final amount = double.tryParse(amountController.text) ?? 0;
-              if (name.isEmpty || amount <= 0) return;
-
-              if (existing != null) {
-                final updatedBudget = existing.copyWith(
-                  category: name,
-                  limitAmount: amount,
-                  monthlyQuota: amount,
-                  type: type,
-                  targetAmount: type == 'saving' || type == 'investment'
-                      ? amount
-                      : null,
+      builder: (ctx) => BudgetFormDialog(
+        existing: existing,
+        onSubmit: (result) async {
+          if (existing != null) {
+            final updatedBudget = existing.copyWith(
+              category: result.name,
+              limitAmount: result.limitAmount,
+              monthlyQuota: result.monthlyQuota,
+              type: result.type,
+              months: result.months,
+              isRecurrent: result.isRecurrent,
+              targetAmount: result.targetAmount,
+            );
+            // Hogar: updateBudget SIN householdId (comportamiento actual).
+            await ref
+                .read(budgetRepositoryProvider)
+                .updateBudget(updatedBudget);
+          } else {
+            await ref
+                .read(budgetRepositoryProvider)
+                .createBudget(
+                  category: result.name,
+                  amount: result.limitAmount,
+                  period: 'monthly',
+                  type: result.type,
+                  months: result.months,
+                  isRecurrent: result.isRecurrent,
+                  targetAmount: result.targetAmount,
+                  householdId: householdId,
                 );
-                await ref
-                    .read(budgetRepositoryProvider)
-                    .updateBudget(updatedBudget);
-              } else {
-                await ref
-                    .read(budgetRepositoryProvider)
-                    .createBudget(
-                      category: name,
-                      amount: amount,
-                      period: 'monthly',
-                      type: type,
-                      householdId: householdId,
-                    );
-              }
-              ref.invalidate(budgetsListProvider(householdId));
-              if (context.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
+          }
+          ref.invalidate(budgetsListProvider(householdId));
+          if (ctx.mounted) Navigator.pop(ctx);
+        },
       ),
     );
   }
