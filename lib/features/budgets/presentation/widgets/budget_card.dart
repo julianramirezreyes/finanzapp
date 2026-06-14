@@ -77,12 +77,12 @@ class BudgetCard extends StatelessWidget {
       decimalDigits: 0,
     );
 
-    double total = budget.monthlyQuota;
-    if (budget.type != 'expense' &&
-        !budget.isRecurrent &&
-        (budget.targetAmount ?? 0) > 0) {
-      total = budget.targetAmount!;
-    }
+    // Recurrente -> objetivo = cuota mensual. Acumulativa (Meta) -> objetivo =
+    // limitAmount (TOTAL canónico del backend), para CUALQUIER type (incl.
+    // expense). Antes la rama excluía expense y caía a monthlyQuota, mostrando
+    // la cuota como objetivo para una acumulativa de gasto.
+    final double total =
+        budget.isRecurrent ? budget.monthlyQuota : budget.limitAmount;
 
     double progress = total > 0 ? (currentAmount / total) : 0.0;
     final bool isExceeded = currentAmount > total;
