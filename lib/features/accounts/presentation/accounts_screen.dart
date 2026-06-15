@@ -1,5 +1,6 @@
 import 'package:finanzapp_v2/features/accounts/data/account_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
+import 'package:finanzapp_v2/features/accounts/presentation/reorder_accounts_action.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/domain/account.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_with_pockets_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_skeleton.dart';
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:finanzapp_v2/features/accounts/presentation/vault_screen.dart';
 
@@ -34,12 +36,13 @@ class AccountsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 itemCount: accounts.length,
                 onReorder: (oldIndex, newIndex) {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final item = accounts.removeAt(oldIndex);
-                  accounts.insert(newIndex, item);
-                  ref.read(accountRepositoryProvider).reorderAccounts(accounts);
+                  reorderAccountsAction(
+                    ref: ref,
+                    context: context,
+                    accounts: accounts,
+                    oldIndex: oldIndex,
+                    newIndex: newIndex,
+                  );
                 },
                 itemBuilder: (context, index) {
                   final acc = accounts[index];
@@ -57,7 +60,7 @@ class AccountsScreen extends ConsumerWidget {
                   );
                 },
               ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(),
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
       floatingActionButton: FloatingActionButton(

@@ -54,11 +54,12 @@ class BudgetHistoryScreen extends ConsumerWidget {
       body: Column(
         children: [
           Container(
+            key: const ValueKey('budget-history-summary-surface'),
             width: double.infinity,
             margin: const EdgeInsets.all(AppSpacing.md),
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: context.surface,
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
               border: Border.all(color: AppColors.borderLight),
             ),

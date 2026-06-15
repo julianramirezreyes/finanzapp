@@ -210,7 +210,7 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: AppColors.primarySurface,
+            color: context.stateFill(AppColors.primary),
             borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
           ),
           child: Text(

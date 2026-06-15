@@ -16,6 +16,10 @@ class Transaction {
   final bool excludeFromBalance;
   final bool paidWithCreditCard;
 
+  final String? vaultCardId;
+  final int? installments;
+  final String? creditCardAccountId;
+
   Transaction({
     required this.id,
     required this.accountId,
@@ -32,6 +36,9 @@ class Transaction {
     required this.userId,
     this.excludeFromBalance = false,
     this.paidWithCreditCard = false,
+    this.vaultCardId,
+    this.installments,
+    this.creditCardAccountId,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -51,6 +58,9 @@ class Transaction {
       userId: json['user_id'] ?? '',
       excludeFromBalance: json['exclude_from_balance'] ?? false,
       paidWithCreditCard: json['paid_with_credit_card'] ?? false,
+      vaultCardId: json['vault_card_id'],
+      installments: json['installments'] as int?,
+      creditCardAccountId: json['credit_card_account_id'],
     );
   }
 
@@ -62,7 +72,7 @@ class Transaction {
       'type': type,
       'category': category,
       'description': description,
-      'date': date.toIso8601String(),
+      'date': date.toUtc().toIso8601String(),
       'context': context,
       'household_id': householdId,
       'budget_id': budgetId,
@@ -70,6 +80,9 @@ class Transaction {
       'pocket_id': pocketId,
       'exclude_from_balance': excludeFromBalance,
       'paid_with_credit_card': paidWithCreditCard,
+      'vault_card_id': vaultCardId,
+      'installments': installments ?? 1,
+      'credit_card_account_id': creditCardAccountId,
     };
 
     if (userId.isNotEmpty) {
@@ -95,6 +108,9 @@ class Transaction {
     String? userId,
     bool? excludeFromBalance,
     bool? paidWithCreditCard,
+    String? vaultCardId,
+    int? installments,
+    String? creditCardAccountId,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -112,6 +128,9 @@ class Transaction {
       userId: userId ?? this.userId,
       excludeFromBalance: excludeFromBalance ?? this.excludeFromBalance,
       paidWithCreditCard: paidWithCreditCard ?? this.paidWithCreditCard,
+      vaultCardId: vaultCardId ?? this.vaultCardId,
+      installments: installments ?? this.installments,
+      creditCardAccountId: creditCardAccountId ?? this.creditCardAccountId,
     );
   }
 }

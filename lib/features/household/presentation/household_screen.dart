@@ -102,7 +102,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
           decoration: BoxDecoration(
-            color: AppColors.infoLight,
+            color: context.stateFill(AppColors.info),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -185,7 +185,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
-              color: AppColors.warningLight,
+              color: context.stateFill(AppColors.warning),
               shape: BoxShape.circle,
             ),
             child: Icon(

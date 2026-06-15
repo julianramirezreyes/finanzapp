@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:finanzapp_v2/core/invalidation/data_invalidator.dart';
 import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
@@ -124,7 +125,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildPocketsSection(),
+                _buildPocketsSection(context),
 
                 const SizedBox(height: AppSpacing.lg),
                 const Divider(),
@@ -139,7 +140,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: context.onSurface,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -226,7 +227,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -282,7 +283,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                               cardTitle,
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.textPrimary,
+                                color: isDark ? Colors.white : AppColors.textPrimary,
                               ),
                             ),
                             if (installments > 1)
@@ -377,7 +378,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     );
   }
 
-  Widget _buildPocketsSection() {
+  Widget _buildPocketsSection(BuildContext context) {
     final pocketsAsync = ref.watch(pocketsProvider(widget.accountId));
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
@@ -392,7 +393,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: context.onSurface,
               ),
             ),
             IconButton(
@@ -408,7 +409,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               return Container(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: context.surface,
                   borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
                 ),
                 child: Row(
@@ -428,7 +429,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 return Card(
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: AppColors.primarySurface,
+                      backgroundColor: context.stateFill(AppColors.info),
                       child: Icon(
                         Icons.savings,
                         color: AppColors.info,
@@ -713,11 +714,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     );
 
     if (paid == true) {
-      // Refresh the OWNER account's debt summary (keyed by widget.accountId,
-      // the account that holds this vault), NOT the paying source account.
+      // Refresh the OWNER account's debt summary + vault items (keyed by
+      // widget.accountId, the account that holds this vault), NOT the paying
+      // source account. Paying down a card also moves cash and changes the card
+      // debt rollups, so refresh the balance + debt effect groups too
+      // (dashboard, accountsList, creditCardsWithDebt) — new-b7-7.
       ref.invalidate(vaultDebtSummaryProvider(widget.accountId));
       ref.invalidate(vaultItemsProvider(widget.accountId));
-      ref.invalidate(accountsListProvider);
+      invalidateAfterMutation(
+        ref,
+        scope: {DataMutation.balanceEffects, DataMutation.debtEffects},
+      );
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -995,6 +1002,9 @@ class _VaultItemDialogState extends ConsumerState<_VaultItemDialog> {
           .read(vaultRepositoryProvider)
           .createVaultItem(widget.accountId, title, jsonStr, _isCard);
       ref.invalidate(vaultItemsProvider(widget.accountId));
+      // A new card changes the debt rollups (vaultDebtSummary base +
+      // creditCardsWithDebt), so refresh them too — new-b7-6.
+      invalidateAfterMutation(ref, scope: {DataMutation.debtEffects});
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -1310,6 +1320,9 @@ class _VaultItemEditDialogState extends ConsumerState<_VaultItemEditDialog> {
             _isCard,
           );
       ref.invalidate(vaultItemsProvider(widget.accountId));
+      // Editing a card can change its debt config, so refresh the debt rollups
+      // (vaultDebtSummary base + creditCardsWithDebt) too — new-b7-6.
+      invalidateAfterMutation(ref, scope: {DataMutation.debtEffects});
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -1350,7 +1363,7 @@ class _VaultItemCardState extends ConsumerState<_VaultItemCard> {
         leading: Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
-            color: AppColors.primarySurface,
+            color: context.stateFill(AppColors.primary),
             borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           ),
           child: Icon(

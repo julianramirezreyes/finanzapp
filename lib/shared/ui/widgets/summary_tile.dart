@@ -36,16 +36,9 @@ class SummaryTile extends StatelessWidget {
     }
   }
 
-  Color get _backgroundColor {
-    switch (type) {
-      case SummaryTileType.income:
-        return AppColors.incomeLight;
-      case SummaryTileType.expense:
-        return AppColors.expenseLight;
-      case SummaryTileType.neutral:
-        return AppColors.infoLight;
-    }
-  }
+  // Relleno brightness-aware del icono: pastel suave en light, base translúcido
+  // en dark (SDD #6, 6a). _color ya resuelve income/expense/info.
+  Color _backgroundColor(BuildContext context) => context.stateFill(_color);
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +55,7 @@ class SummaryTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: _backgroundColor,
+              color: _backgroundColor(context),
               borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
             ),
             child: Icon(icon, color: _color, size: AppSpacing.iconSizeMedium),

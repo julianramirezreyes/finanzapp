@@ -181,7 +181,7 @@ class _HouseholdHistoryScreenState
           "Editar ${item.type == 'income' ? 'Ingreso' : 'Gasto'}",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: context.onSurface,
           ),
         ),
         content: Column(
@@ -458,7 +458,7 @@ class _HouseholdHistoryScreenState
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
+                    color: context.subtleFill(),
                     borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
                   ),
                   child: Column(
@@ -477,7 +477,7 @@ class _HouseholdHistoryScreenState
                           vertical: AppSpacing.md,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
+                          color: context.surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.borderLight),
                         ),
@@ -586,7 +586,7 @@ class _HouseholdHistoryScreenState
                   if (widget.household.userBEmail != null)
                     ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: AppColors.savingsLight,
+                        backgroundColor: context.stateFill(AppColors.savings),
                         child: Icon(Icons.person, color: AppColors.savings),
                       ),
                       title: Text(widget.household.userBEmail!),
@@ -972,7 +972,9 @@ class _HouseholdHistoryScreenState
                                         ? AppColors.textMuted.withValues(
                                             alpha: 0.1,
                                           )
-                                        : AppColors.investmentLight,
+                                        : context.stateFill(
+                                            AppColors.investment,
+                                          ),
                                     borderRadius: BorderRadius.circular(
                                       AppSpacing.cardRadius,
                                     ),
@@ -1195,7 +1197,7 @@ class _HouseholdHistoryScreenState
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: AppColors.textPrimary,
+                          color: context.onSurface,
                         ),
                       ),
                     ),
@@ -1259,9 +1261,11 @@ class _HouseholdHistoryScreenState
                               vertical: AppSpacing.xs,
                             ),
                             leading: CircleAvatar(
-                              backgroundColor: item.type == 'income'
-                                  ? AppColors.incomeLight
-                                  : AppColors.expenseLight,
+                              backgroundColor: context.stateFill(
+                                item.type == 'income'
+                                    ? AppColors.income
+                                    : AppColors.expense,
+                              ),
                               child: Icon(
                                 item.type == 'income'
                                     ? Icons.arrow_downward
@@ -1276,7 +1280,7 @@ class _HouseholdHistoryScreenState
                               item.category ?? 'Sin categoría',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+                                color: context.onSurface,
                               ),
                             ),
                             subtitle: Column(
@@ -1310,7 +1314,7 @@ class _HouseholdHistoryScreenState
                                     fontSize: 15,
                                     color: item.type == 'income'
                                         ? AppColors.income
-                                        : AppColors.textPrimary,
+                                        : context.onSurface,
                                   ),
                                 ),
                                 if (!item.isExcluded) ...[
@@ -1624,7 +1628,7 @@ class _SplitMethodSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.infoLight,
+        color: context.stateFill(AppColors.info),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
@@ -1819,7 +1823,7 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.infoLight,
+                  color: context.stateFill(AppColors.info),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.tune, color: AppColors.info, size: 24),
@@ -1830,7 +1834,7 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: context.onSurface,
                 ),
               ),
             ],
@@ -1844,7 +1848,7 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: context.surface,
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
               border: Border.all(color: AppColors.borderLight),
             ),
@@ -1904,7 +1908,7 @@ class _SplitConfigSheetState extends State<_SplitConfigSheet> {
                 SliderTheme(
                   data: SliderThemeData(
                     activeTrackColor: AppColors.info,
-                    inactiveTrackColor: AppColors.savingsLight,
+                    inactiveTrackColor: context.stateFill(AppColors.savings),
                     thumbColor: AppColors.info,
                     overlayColor: AppColors.info.withValues(alpha: 0.2),
                     trackHeight: 8,

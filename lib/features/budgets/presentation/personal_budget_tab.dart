@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_form_dialog.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
@@ -108,7 +109,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               householdAsync.when(
                 data: (household) {
                   if (household == null || currentUser == null) {
-                    return _buildNoHouseholdBanner();
+                    return _buildNoHouseholdBanner(context);
                   }
                   final householdConfigAsync = ref.watch(
                     budgetConfigProvider((
@@ -119,6 +120,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                   return householdConfigAsync.when(
                     data: (householdConfig) {
                       return _buildPersonalAvailableBanner(
+                        context,
                         household,
                         currentUser,
                         currency,
@@ -164,7 +166,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: context.stateFill(AppColors.primary),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.buttonRadius,
                         ),
@@ -210,9 +212,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                             vertical: AppSpacing.xs,
                           ),
                           decoration: BoxDecoration(
-                            color: isInvalid
-                                ? AppColors.expenseLight
-                                : AppColors.incomeLight,
+                            color: context.stateFill(
+                              isInvalid ? AppColors.expense : AppColors.income,
+                            ),
                             borderRadius: BorderRadius.circular(
                               AppSpacing.chipRadius,
                             ),
@@ -281,7 +283,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _buildPreviewBar(totalIncome, currency, ref),
+              _buildPreviewBar(context, totalIncome, currency, ref),
               const SizedBox(height: AppSpacing.xl),
               _buildBudgetsSection(context, ref),
             ],
@@ -342,6 +344,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   }
 
   Widget _buildPreviewBar(
+    BuildContext context,
     double totalIncome,
     NumberFormat currency,
     WidgetRef ref,
@@ -355,24 +358,21 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
 
     return budgetsAsync.when(
       data: (budgets) {
-        final assignedExpense = budgets
-            .where((b) => b.type == 'expense')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-        final assignedSaving = budgets
-            .where((b) => b.type == 'saving')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-        final assignedInvestment = budgets
-            .where((b) => b.type == 'investment')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-
-        final totalAssigned =
-            assignedExpense + assignedSaving + assignedInvestment;
+        // The bar shows REAL consumption of the month (Σ currentAmount), not the
+        // assignment (Σ monthlyQuota). The colored top bar still renders the plan
+        // per type (expenseAmt/savingAmt/investAmt = income × pct).
         final totalBudgeted = expenseAmt + savingAmt + investAmt;
-        final remaining = totalBudgeted - totalAssigned;
+        final summary = summarizeBudgetConsumption(
+          budgets: budgets,
+          totalBudgeted: totalBudgeted,
+        );
+        final consumedExpense = summary.consumedExpense;
+        final consumedSaving = summary.consumedSaving;
+        final consumedInvestment = summary.consumedInvestment;
+        final totalConsumed = summary.totalConsumed;
+        final remaining = summary.remaining;
         final isOverBudget = remaining < 0;
-        final progress = totalBudgeted > 0
-            ? (totalAssigned / totalBudgeted).clamp(0.0, 1.5)
-            : 0.0;
+        final progress = summary.progress;
 
         return AppCard(
           child: Column(
@@ -467,22 +467,22 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                       children: [
                         Text(
                           isOverBudget
-                              ? 'Te has pasado del presupuesto'
-                              : 'Asignado vs Presupuestado',
+                              ? 'Te has pasado del plan'
+                              : 'Gastado vs Plan',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: isOverBudget
                                 ? AppColors.expense
-                                : AppColors.textPrimary,
+                                : context.onSurface,
                           ),
                         ),
                         Text(
-                          '${currency.format(totalAssigned)} / ${currency.format(totalBudgeted)}',
+                          '${currency.format(totalConsumed)} / ${currency.format(totalBudgeted)}',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: isOverBudget
                                 ? AppColors.expense
-                                : AppColors.textPrimary,
+                                : context.onSurface,
                           ),
                         ),
                       ],
@@ -510,13 +510,13 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${(progress * 100).toStringAsFixed(0)}% asignado',
+                          '${(progress * 100).toStringAsFixed(0)}% del plan gastado',
                           style: AppTypography.labelSmall,
                         ),
                         Text(
                           isOverBudget
-                              ? '${currency.format(remaining.abs())} sobre presupuesto'
-                              : '${currency.format(remaining)} restante',
+                              ? '${currency.format(remaining.abs())} sobre el plan'
+                              : '${currency.format(remaining)} disponible',
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             color: isOverBudget
@@ -532,25 +532,25 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  _buildPersonalAssignedChip(
+                  _buildPersonalConsumedChip(
                     'Gastos',
-                    assignedExpense,
+                    consumedExpense,
                     expenseAmt,
                     AppColors.expense,
                     currency,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _buildPersonalAssignedChip(
+                  _buildPersonalConsumedChip(
                     'Ahorro',
-                    assignedSaving,
+                    consumedSaving,
                     savingAmt,
                     AppColors.savings,
                     currency,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _buildPersonalAssignedChip(
+                  _buildPersonalConsumedChip(
                     'Inversión',
-                    assignedInvestment,
+                    consumedInvestment,
                     investAmt,
                     AppColors.investment,
                     currency,
@@ -566,14 +566,14 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     );
   }
 
-  Widget _buildPersonalAssignedChip(
+  Widget _buildPersonalConsumedChip(
     String label,
-    double assigned,
+    double consumed,
     double budgeted,
     Color color,
     NumberFormat currency,
   ) {
-    final isOver = assigned > budgeted && budgeted > 0;
+    final isOver = consumed > budgeted && budgeted > 0;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -600,7 +600,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               ),
             ),
             Text(
-              currency.format(assigned),
+              currency.format(consumed),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -736,12 +736,12 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     );
   }
 
-  Widget _buildNoHouseholdBanner() {
+  Widget _buildNoHouseholdBanner(BuildContext context) {
     return AppCard(
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.infoLight,
+          color: context.stateFill(AppColors.info),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
@@ -761,6 +761,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   }
 
   Widget _buildPersonalAvailableBanner(
+    BuildContext context,
     dynamic household,
     dynamic currentUser,
     NumberFormat currency,
@@ -822,9 +823,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: isNegative
-                      ? AppColors.expenseLight
-                      : AppColors.incomeLight,
+                  color: context.stateFill(
+                    isNegative ? AppColors.expense : AppColors.income,
+                  ),
                   borderRadius: BorderRadius.circular(AppSpacing.sm),
                 ),
                 child: Column(
@@ -852,24 +853,28 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               const Divider(),
               const SizedBox(height: AppSpacing.sm),
               _buildContributionRow(
+                context,
                 'Tu ingreso en Hogar',
                 myIncome,
                 currency,
                 false,
               ),
               _buildContributionRow(
+                context,
                 '- Tu parte Gastos',
                 myExpense,
                 currency,
                 true,
               ),
               _buildContributionRow(
+                context,
                 '- Tu parte Ahorro',
                 mySaving,
                 currency,
                 true,
               ),
               _buildContributionRow(
+                context,
                 '- Tu parte Inversión',
                 myInvestment,
                 currency,
@@ -877,6 +882,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
               ),
               const Divider(),
               _buildContributionRow(
+                context,
                 'Total aporte Hogar',
                 myTotalContribution,
                 currency,
@@ -893,6 +899,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   }
 
   Widget _buildContributionRow(
+    BuildContext context,
     String label,
     double amount,
     NumberFormat currency,
@@ -916,7 +923,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
-              color: isSubtraction ? AppColors.expense : AppColors.textPrimary,
+              color: isSubtraction ? AppColors.expense : context.onSurface,
             ),
           ),
         ],

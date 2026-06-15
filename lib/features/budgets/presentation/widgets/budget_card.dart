@@ -180,7 +180,7 @@ class BudgetCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
+                            color: context.subtleFill(),
                             borderRadius: BorderRadius.circular(AppSpacing.xs),
                           ),
                           child: Text(
@@ -211,8 +211,8 @@ class BudgetCard extends StatelessWidget {
                   color: isExceeded
                       ? AppColors.expense.withValues(alpha: 0.15)
                       : progress >= 1.0
-                      ? AppColors.incomeLight
-                      : AppColors.backgroundLight,
+                      ? context.stateFill(AppColors.income)
+                      : context.subtleFill(),
                   borderRadius: BorderRadius.circular(AppSpacing.xs),
                 ),
                 child: Text(

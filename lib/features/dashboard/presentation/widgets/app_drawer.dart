@@ -145,7 +145,7 @@ class AppDrawer extends ConsumerWidget {
             leading: Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.expenseLight,
+                color: context.stateFill(AppColors.expense),
                 borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
               ),
               child: const Icon(

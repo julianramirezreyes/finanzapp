@@ -51,9 +51,9 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             Text(
               title,
-              style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              // Hereda onSurface del tema (legible en light y dark). Antes
+              // fijaba textPrimary -> título invisible en dark (SDD #6, 6a).
+              style: AppTypography.headlineSmall,
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[

@@ -42,7 +42,7 @@ class AssetsScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(AppSpacing.sm),
                             decoration: BoxDecoration(
-                              color: AppColors.incomeLight,
+                              color: context.stateFill(AppColors.income),
                               borderRadius: BorderRadius.circular(
                                 AppSpacing.buttonRadius,
                               ),
@@ -142,7 +142,7 @@ class AssetsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppColors.investmentLight,
+              color: context.stateFill(AppColors.investment),
               borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
             ),
             child: Icon(
@@ -168,8 +168,8 @@ class AssetsScreen extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: asset.isTaxable
-                        ? AppColors.warningLight
-                        : AppColors.backgroundLight,
+                        ? context.stateFill(AppColors.warning)
+                        : context.subtleFill(),
                     borderRadius: BorderRadius.circular(AppSpacing.xs),
                   ),
                   child: Text(

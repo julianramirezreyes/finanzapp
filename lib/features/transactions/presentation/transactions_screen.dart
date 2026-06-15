@@ -1,7 +1,7 @@
+import 'package:finanzapp_v2/core/invalidation/data_invalidator.dart';
 import 'package:finanzapp_v2/features/history/data/history_provider.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
-import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +13,7 @@ import 'package:finanzapp_v2/shared/ui/widgets/balance_card.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/summary_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/transaction_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_skeleton.dart';
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:finanzapp_v2/shared/ui/dialogs/confirm_dialog.dart';
 
@@ -198,7 +199,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(),
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
       floatingActionButton: FloatingActionButton(
@@ -229,7 +230,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: AppColors.primarySurface,
+            color: context.stateFill(AppColors.primary),
             borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
           ),
           child: Text(
@@ -272,9 +273,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     if (confirmed == true) {
       try {
         await ref.read(transactionRepositoryProvider).deleteTransaction(id);
-        ref.invalidate(personalHistoryProvider);
-        ref.invalidate(transactionsListProvider);
-        ref.invalidate(accountsListProvider);
+        // Deleting a tx changes balances, history, budgets and the household
+        // snapshot (txEffects) AND, if it touched a credit card, the card debt
+        // rollups (debtEffects) — refresh the whole set so nothing stays stale.
+        invalidateAfterMutation(
+          ref,
+          scope: {DataMutation.txEffects, DataMutation.debtEffects},
+        );
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,

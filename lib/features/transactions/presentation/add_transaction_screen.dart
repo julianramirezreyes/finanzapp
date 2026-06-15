@@ -1,3 +1,4 @@
+import 'package:finanzapp_v2/core/invalidation/data_invalidator.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
@@ -5,13 +6,8 @@ import 'package:finanzapp_v2/features/accounts/data/pocket_repository.dart';
 import 'package:finanzapp_v2/features/accounts/data/vault_repository.dart';
 import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
-import 'package:finanzapp_v2/features/dashboard/data/dashboard_provider.dart';
-import 'package:finanzapp_v2/features/history/data/history_provider.dart';
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
-import 'package:finanzapp_v2/features/household/presentation/household_history_screen.dart'
-    show householdSnapshotProvider;
 import 'package:finanzapp_v2/features/transactions/data/transaction_repository.dart';
-import 'package:finanzapp_v2/features/transactions/data/transactions_provider.dart';
 import 'package:finanzapp_v2/features/transactions/domain/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,7 +131,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildTypeSelector(),
+                  _buildTypeSelector(context),
                   const SizedBox(height: AppSpacing.xxl),
                   _buildAmountField(),
                   const SizedBox(height: AppSpacing.lg),
@@ -171,7 +167,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Widget _buildTypeSelector() {
+  Widget _buildTypeSelector(BuildContext context) {
     return SegmentedButton<String>(
       segments: [
         ButtonSegment(
@@ -202,9 +198,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
           if (states.contains(WidgetState.selected)) {
-            if (_type == 'expense') return AppColors.expenseLight;
-            if (_type == 'income') return AppColors.incomeLight;
-            return AppColors.investmentLight;
+            if (_type == 'expense') {
+              return context.stateFill(AppColors.expense);
+            }
+            if (_type == 'income') {
+              return context.stateFill(AppColors.income);
+            }
+            return context.stateFill(AppColors.investment);
           }
           return Colors.transparent;
         }),
@@ -251,7 +251,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ),
             hintText: '0',
             filled: true,
-            fillColor: AppColors.surfaceLight,
+            fillColor: context.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
               borderSide: BorderSide(color: AppColors.borderLight),
@@ -316,7 +316,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     ? 'Concepto de la transferencia'
                     : '¿Qué gastaste?',
             filled: true,
-            fillColor: AppColors.surfaceLight,
+            fillColor: context.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
               borderSide: BorderSide(color: AppColors.borderLight),
@@ -366,7 +366,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     vertical: AppSpacing.md,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: context.surface,
                     borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
                     border: Border.all(color: AppColors.borderLight),
                   ),
@@ -408,7 +408,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: context.surface,
                   borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
                   border: Border.all(color: AppColors.borderLight),
                 ),
@@ -591,7 +591,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               constraints: const BoxConstraints(minHeight: 48),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
                 border: Border.all(color: AppColors.borderLight),
               ),
@@ -637,7 +637,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: context.surface,
             borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
             border: Border.all(color: AppColors.borderLight),
           ),
@@ -710,7 +710,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: context.surface,
             borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
             border: Border.all(color: AppColors.borderLight),
           ),
@@ -754,7 +754,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: context.surface,
               borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
               border: Border.all(color: AppColors.borderLight),
             ),
@@ -803,7 +803,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppColors.warningLight,
+              color: isDark
+                  ? AppColors.warning.withValues(alpha: 0.18)
+                  : AppColors.warningLight,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.money_off, color: AppColors.warning, size: 20),
@@ -817,7 +819,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   'No afectar saldo',
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
                 ),
                 Text(
@@ -868,7 +870,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.warningLight,
+                  color: isDark
+                      ? AppColors.warning.withValues(alpha: 0.18)
+                      : AppColors.warningLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -886,7 +890,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       'Pagar Tarjeta de Crédito',
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                     Text(
@@ -929,9 +933,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 vertical: AppSpacing.xs,
               ),
               decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
+                color: isDark
+                    ? AppColors.surfaceVariantDark.withValues(alpha: 0.5)
+                    : AppColors.backgroundLight,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                border: Border.all(color: AppColors.borderLight),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.borderDark
+                      : AppColors.borderLight,
+                ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -992,7 +1002,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.infoLight,
+                  color: isDark
+                      ? AppColors.info.withValues(alpha: 0.18)
+                      : AppColors.infoLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.credit_card, color: AppColors.info, size: 20),
@@ -1006,7 +1018,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       'Pagado con Tarjeta de Crédito',
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                     Text(
@@ -1051,9 +1063,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 vertical: AppSpacing.xs,
               ),
               decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
+                color: isDark
+                    ? AppColors.surfaceVariantDark.withValues(alpha: 0.5)
+                    : AppColors.backgroundLight,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                border: Border.all(color: AppColors.borderLight),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.borderDark
+                      : AppColors.borderLight,
+                ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -1311,6 +1329,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             paidWithCreditCard: _type == 'expense'
                 ? _paidWithCreditCard
                 : false,
+            creditCardAccountId: null,
+            vaultCardId: _type == 'expense' && _paidWithCreditCard
+                ? _creditCardAccountId
+                : null,
+            installments: _paidWithCreditCard ? _installments : 1,
           );
 
           await ref
@@ -1376,20 +1399,24 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           }
         }
 
-        ref.invalidate(transactionsListProvider);
-        ref.invalidate(accountsListProvider);
-        ref.invalidate(dashboardProvider);
-        ref.invalidate(personalHistoryProvider);
-        ref.invalidate(budgetsListProvider);
-        ref.invalidate(householdSnapshotProvider);
-
-        // The card's debt is keyed by its OWNER account, not the paying account.
-        // Invalidate every debt summary and the cards-with-debt list so the paid
-        // card refreshes no matter which account holds it.
-        if (_payingCreditCard && _creditCardAccountId != null) {
-          ref.invalidate(vaultDebtSummaryProvider);
-          ref.invalidate(creditCardsWithDebtProvider);
-        }
+        // Every create/update/pay path moves money: refresh the tx effect set.
+        // The card's debt is keyed by its OWNER account, not the paying account,
+        // so ALSO refresh the debt rollups whenever credit-card debt changed —
+        // that is BOTH paying down a card (_payingCreditCard) AND charging an
+        // expense to a card (_paidWithCreditCard). The previous code only fired
+        // debtEffects on the pay-down path, so a card expense left the debt
+        // summary stale (new-b7-2). One call with the union scope avoids the
+        // double-invalidation the old branch risked (R4).
+        final paidDebtChanged =
+            (_payingCreditCard && _creditCardAccountId != null) ||
+            (_type == 'expense' && _paidWithCreditCard);
+        invalidateAfterMutation(
+          ref,
+          scope: {
+            DataMutation.txEffects,
+            if (paidDebtChanged) DataMutation.debtEffects,
+          },
+        );
 
         if (mounted) {
           context.pop();

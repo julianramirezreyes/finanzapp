@@ -46,12 +46,6 @@ class AppColors {
     colors: [Color(0xFF10B981), Color(0xFF059669)],
   );
 
-  static const LinearGradient balancePositiveGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF10B981), Color(0xFF059669)],
-  );
-
   static const LinearGradient balanceNegativeGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -63,4 +57,41 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
   );
+}
+
+/// Helpers semánticos brightness-aware (SDD #6, slice 6a).
+///
+/// Resuelven el token correcto según el brillo del tema activo, replicando el
+/// patrón `isDark ? dark : light` que ya usa AppCard. Reemplazan los literales
+/// claros hardcodeados (surfaceLight/backgroundLight/pasteles) que causaban
+/// fondos chillones y texto invisible en dark mode.
+///
+/// En DARK, los rellenos de estado (`stateFill`) usan el color base a baja
+/// opacidad en lugar del pastel claro; en LIGHT mantienen el pastel suave
+/// (base a baja opacidad), conservando la estética original.
+extension AppColorsX on BuildContext {
+  bool get _isDark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Superficie de tarjeta/contenedor según el brillo.
+  Color get surface =>
+      _isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+
+  /// Borde sutil según el brillo.
+  Color get border => _isDark ? AppColors.borderDark : AppColors.borderLight;
+
+  /// Color de texto/icono principal sobre la superficie, legible en ambos
+  /// brillos. Resuelve `colorScheme.onSurface` del tema.
+  Color get onSurface => Theme.of(this).colorScheme.onSurface;
+
+  /// Relleno tenue de fondo (zonas de respiro / chips neutros). En light usa el
+  /// fondo claro de la app; en dark un gris elevado, NUNCA un pastel claro.
+  Color subtleFill() => _isDark
+      ? AppColors.surfaceVariantDark.withValues(alpha: 0.5)
+      : AppColors.backgroundLight;
+
+  /// Relleno de estado de color (income/expense/info/savings/...). En light es
+  /// el color base a baja opacidad (pastel suave); en dark el mismo color base
+  /// a una opacidad aún menor, evitando el parche claro chillón.
+  Color stateFill(Color base) =>
+      base.withValues(alpha: _isDark ? 0.18 : 0.12);
 }

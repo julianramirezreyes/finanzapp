@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import 'app_card.dart';
+import 'bank_avatar.dart';
 import 'package:intl/intl.dart';
 
 class AccountTile extends StatelessWidget {
@@ -23,23 +25,6 @@ class AccountTile extends StatelessWidget {
     this.trailing,
     this.showDragHandle = false,
   });
-
-  IconData get _icon {
-    switch (type.toLowerCase()) {
-      case 'cash':
-        return Icons.account_balance_wallet;
-      case 'savings':
-        return Icons.savings;
-      case 'checking':
-        return Icons.account_balance;
-      case 'credit':
-        return Icons.credit_card;
-      case 'investment':
-        return Icons.trending_up;
-      default:
-        return Icons.account_balance_wallet;
-    }
-  }
 
   String get _typeLabel {
     switch (type.toLowerCase()) {
@@ -69,71 +54,55 @@ class AccountTile extends StatelessWidget {
     final isCredit = type.toLowerCase() == 'credit';
     final balanceColor = isCredit && balance < 0
         ? AppColors.expense
-        : AppColors.textPrimary;
+        : context.onSurface;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.symmetric(
         vertical: AppSpacing.xs,
         horizontal: 0,
       ),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Row(
+        children: [
+          BankAvatar(name: name, type: type),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppTypography.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: Icon(
-                  _icon,
-                  color: AppColors.primary,
-                  size: AppSpacing.iconSizeMedium,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: AppTypography.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(_typeLabel, style: AppTypography.labelSmall),
-                  ],
-                ),
-              ),
-              if (trailing != null) ...[
-                trailing!,
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs),
+                Text(_typeLabel, style: AppTypography.labelSmall),
               ],
-              Text(
-                currencyFormat.format(balance),
-                style: AppTypography.amountSmall.copyWith(
-                  color: balanceColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (showDragHandle) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Icon(
-                  Icons.drag_handle,
-                  color: AppColors.textMuted,
-                  size: AppSpacing.iconSizeMedium,
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
+          if (trailing != null) ...[
+            trailing!,
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Text(
+            currencyFormat.format(balance),
+            style: AppTypography.amountSmall.copyWith(
+              color: balanceColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (showDragHandle) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Icon(
+              Icons.drag_handle,
+              color: AppColors.textMuted,
+              size: AppSpacing.iconSizeMedium,
+            ),
+          ],
+        ],
       ),
     );
   }

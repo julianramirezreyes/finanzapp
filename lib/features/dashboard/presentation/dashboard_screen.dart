@@ -15,11 +15,14 @@ import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/core/presentation/responsive_layout.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/balance_card.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/summary_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/account_with_pockets_tile.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/action_chip.dart' as app_ui;
+import 'package:finanzapp_v2/shared/ui/widgets/app_skeleton.dart';
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -166,7 +169,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const DashboardLoadingView(),
           error: (err, stack) => Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -366,50 +369,48 @@ class DashboardScreen extends ConsumerWidget {
     DashboardData data,
     NumberFormat format,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen del año ${DateTime.now().year}',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SummaryRow(
-              items: [
-                SummaryTileData(
-                  title: 'Ingresos',
-                  amount: data.yearlyIncome,
-                  icon: Icons.arrow_upward_rounded,
-                  type: SummaryTileType.income,
-                  format: format,
-                ),
-                SummaryTileData(
-                  title: 'Gastos',
-                  amount: data.yearlyExpense,
-                  icon: Icons.arrow_downward_rounded,
-                  type: SummaryTileType.expense,
-                  format: format,
-                ),
-                SummaryTileData(
-                  title: 'Balance',
-                  amount: data.yearlyBalance,
-                  icon: data.yearlyBalance >= 0
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
-                  type: data.yearlyBalance >= 0
-                      ? SummaryTileType.income
-                      : SummaryTileType.expense,
-                  format: format,
-                ),
-              ],
-            ),
-          ],
-        ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Resumen del año ${DateTime.now().year}',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SummaryRow(
+            items: [
+              SummaryTileData(
+                title: 'Ingresos',
+                amount: data.yearlyIncome,
+                icon: Icons.arrow_upward_rounded,
+                type: SummaryTileType.income,
+                format: format,
+              ),
+              SummaryTileData(
+                title: 'Gastos',
+                amount: data.yearlyExpense,
+                icon: Icons.arrow_downward_rounded,
+                type: SummaryTileType.expense,
+                format: format,
+              ),
+              SummaryTileData(
+                title: 'Balance',
+                amount: data.yearlyBalance,
+                icon: data.yearlyBalance >= 0
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                type: data.yearlyBalance >= 0
+                    ? SummaryTileType.income
+                    : SummaryTileType.expense,
+                format: format,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -529,30 +530,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         if (data.accounts.isEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 48,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const Text(
-                    'Aún no tienes cuentas',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Agrega una cuenta para comenzar',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          )
+          const DashboardAccountsEmptyState()
         else
           ...data.accounts.map((acc) {
             final pocketsTotal = data.pocketsTotals[acc.id] ?? 0.0;
@@ -665,6 +643,35 @@ class DashboardScreen extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Estado de carga del dashboard: silueta de skeletons (design system) en lugar
+/// de un CircularProgressIndicator crudo (SDD #6, slice 6b). Es un widget puro
+/// sin providers para poder testearlo en aislamiento.
+class DashboardLoadingView extends StatelessWidget {
+  const DashboardLoadingView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonList(itemCount: 5);
+  }
+}
+
+/// Empty state de la sección de cuentas del dashboard cuando el usuario aún no
+/// tiene cuentas. Usa el componente [EmptyState] del design system (con tokens
+/// de spacing) en lugar del `Card` artesanal previo (SDD #6, slice 6c). Widget
+/// puro para poder testearlo en aislamiento.
+class DashboardAccountsEmptyState extends StatelessWidget {
+  const DashboardAccountsEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const EmptyState(
+      icon: Icons.account_balance_wallet_outlined,
+      title: 'Aún no tienes cuentas',
+      subtitle: 'Agrega una cuenta para comenzar',
     );
   }
 }

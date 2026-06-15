@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_form_dialog.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
@@ -185,7 +186,7 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                         Container(
                           padding: const EdgeInsets.all(AppSpacing.md),
                           decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
+                            color: context.stateFill(AppColors.primary),
                             borderRadius: BorderRadius.circular(
                               AppSpacing.buttonRadius,
                             ),
@@ -231,9 +232,11 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                                 vertical: AppSpacing.xs,
                               ),
                               decoration: BoxDecoration(
-                                color: isInvalid
-                                    ? AppColors.expenseLight
-                                    : AppColors.incomeLight,
+                                color: context.stateFill(
+                                  isInvalid
+                                      ? AppColors.expense
+                                      : AppColors.income,
+                                ),
                                 borderRadius: BorderRadius.circular(
                                   AppSpacing.chipRadius,
                                 ),
@@ -309,12 +312,11 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _buildPreviewBar(
+                    context,
                     totalIncome,
                     currency,
                     household.id,
                     ref,
-                    incomeA,
-                    incomeB,
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _buildGoalsSection(context, ref, household.id),
@@ -380,12 +382,11 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
   }
 
   Widget _buildPreviewBar(
+    BuildContext context,
     double totalIncome,
     NumberFormat currency,
     String householdId,
     WidgetRef ref,
-    double incomeA,
-    double incomeB,
   ) {
     if (totalIncome <= 0) return const SizedBox.shrink();
     final expenseAmt = totalIncome * (_pctExpense / 100);
@@ -396,27 +397,23 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
 
     return budgetsAsync.when(
       data: (budgets) {
-        final assignedExpense = budgets
-            .where((b) => b.type == 'expense')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-        final assignedSaving = budgets
-            .where((b) => b.type == 'saving')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-        final assignedInvestment = budgets
-            .where((b) => b.type == 'investment')
-            .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
-
-        final myRatio = totalIncome > 0 ? incomeA / totalIncome : 0.5;
-        final partnerRatio = totalIncome > 0 ? incomeB / totalIncome : 0.5;
-
-        final totalAssigned =
-            assignedExpense + assignedSaving + assignedInvestment;
+        // The bar shows REAL household consumption of the month (Σ currentAmount),
+        // which already arrives aggregated across BOTH members from the backend.
+        // It is NOT split by myRatio/partnerRatio: those describe planned
+        // contribution, not executed spend (R3). The colored top bar still shows
+        // the plan per type (expenseAmt/savingAmt/investAmt = income × pct).
         final totalBudgeted = expenseAmt + savingAmt + investAmt;
-        final remaining = totalBudgeted - totalAssigned;
+        final summary = summarizeBudgetConsumption(
+          budgets: budgets,
+          totalBudgeted: totalBudgeted,
+        );
+        final consumedExpense = summary.consumedExpense;
+        final consumedSaving = summary.consumedSaving;
+        final consumedInvestment = summary.consumedInvestment;
+        final totalConsumed = summary.totalConsumed;
+        final remaining = summary.remaining;
         final isOverBudget = remaining < 0;
-        final progress = totalBudgeted > 0
-            ? (totalAssigned / totalBudgeted).clamp(0.0, 1.5)
-            : 0.0;
+        final progress = summary.progress;
 
         return AppCard(
           child: Column(
@@ -511,22 +508,22 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                       children: [
                         Text(
                           isOverBudget
-                              ? '⚠️ Te has pasado del presupuesto'
-                              : 'Asignado vs Presupuestado',
+                              ? '⚠️ Te has pasado del plan'
+                              : 'Gastado vs Plan',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: isOverBudget
                                 ? AppColors.expense
-                                : AppColors.textPrimary,
+                                : context.onSurface,
                           ),
                         ),
                         Text(
-                          '${currency.format(totalAssigned)} / ${currency.format(totalBudgeted)}',
+                          '${currency.format(totalConsumed)} / ${currency.format(totalBudgeted)}',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: isOverBudget
                                 ? AppColors.expense
-                                : AppColors.textPrimary,
+                                : context.onSurface,
                           ),
                         ),
                       ],
@@ -554,13 +551,13 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${(progress * 100).toStringAsFixed(0)}% asignado',
+                          '${(progress * 100).toStringAsFixed(0)}% del plan gastado',
                           style: AppTypography.labelSmall,
                         ),
                         Text(
                           isOverBudget
-                              ? '${currency.format(remaining.abs())} sobre presupuesto'
-                              : '${currency.format(remaining)} restante',
+                              ? '${currency.format(remaining.abs())} sobre el plan'
+                              : '${currency.format(remaining)} disponible',
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             color: isOverBudget
@@ -577,34 +574,28 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildAssignedChip(
+                  _buildConsumedChip(
                     'Gastos',
-                    assignedExpense,
+                    consumedExpense,
                     expenseAmt,
                     AppColors.expense,
                     currency,
-                    myRatio,
-                    partnerRatio,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _buildAssignedChip(
+                  _buildConsumedChip(
                     'Ahorro',
-                    assignedSaving,
+                    consumedSaving,
                     savingAmt,
                     AppColors.savings,
                     currency,
-                    myRatio,
-                    partnerRatio,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _buildAssignedChip(
+                  _buildConsumedChip(
                     'Inversión',
-                    assignedInvestment,
+                    consumedInvestment,
                     investAmt,
                     AppColors.investment,
                     currency,
-                    myRatio,
-                    partnerRatio,
                   ),
                 ],
               ),
@@ -617,18 +608,16 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     );
   }
 
-  Widget _buildAssignedChip(
+  Widget _buildConsumedChip(
     String label,
-    double assigned,
+    double consumed,
     double budgeted,
     Color color,
     NumberFormat currency,
-    double myRatio,
-    double partnerRatio,
   ) {
-    final myShare = assigned * myRatio;
-    final partnerShare = assigned * partnerRatio;
-    final isOver = assigned > budgeted && budgeted > 0;
+    // R3: household consumption is the TOTAL aggregate; it is not split by
+    // contribution ratio (that describes planned aporte, not executed spend).
+    final isOver = consumed > budgeted && budgeted > 0;
     return Expanded(
       flex: 1,
       child: Container(
@@ -655,20 +644,12 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
               ),
             ),
             Text(
-              currency.format(assigned),
+              currency.format(consumed),
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: isOver ? AppColors.expense : color,
               ),
-            ),
-            Text(
-              'Vos: ${currency.format(myShare)}',
-              style: TextStyle(fontSize: 8, color: AppColors.primary),
-            ),
-            Text(
-              'Pareja: ${currency.format(partnerShare)}',
-              style: TextStyle(fontSize: 8, color: AppColors.textSecondary),
             ),
             Text(
               'de ${currency.format(budgeted)}',

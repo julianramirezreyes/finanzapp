@@ -1,3 +1,4 @@
+import 'package:finanzapp_v2/core/invalidation/data_invalidator.dart';
 import 'package:finanzapp_v2/features/automation/data/automation_repository.dart';
 import 'package:finanzapp_v2/features/automation/domain/recurring_payment.dart';
 import 'package:finanzapp_v2/features/accounts/data/accounts_provider.dart';
@@ -64,9 +65,9 @@ class RecurringPaymentsScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(AppSpacing.sm),
                           decoration: BoxDecoration(
-                            color: isDue
-                                ? AppColors.warningLight
-                                : AppColors.primarySurface,
+                            color: context.stateFill(
+                              isDue ? AppColors.warning : AppColors.primary,
+                            ),
                             borderRadius: BorderRadius.circular(
                               AppSpacing.buttonRadius,
                             ),
@@ -113,8 +114,8 @@ class RecurringPaymentsScreen extends ConsumerWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: isDue
-                                    ? AppColors.incomeLight
-                                    : AppColors.backgroundLight,
+                                    ? context.stateFill(AppColors.income)
+                                    : context.subtleFill(),
                                 borderRadius: BorderRadius.circular(
                                   AppSpacing.xs,
                                 ),
@@ -235,6 +236,11 @@ class RecurringPaymentsScreen extends ConsumerWidget {
     if (confirmed == true) {
       try {
         await ref.read(automationRepositoryProvider).executePayment(payment.id);
+        // Executing a recurring payment posts a real transaction, so refresh the
+        // full tx effect set (balances, history, budgets, snapshot). The two
+        // automation lists are not part of any effect group, so keep invalidating
+        // them explicitly here.
+        invalidateAfterMutation(ref, scope: {DataMutation.txEffects});
         ref.invalidate(pendingPaymentsProvider);
         ref.invalidate(allRecurringPaymentsProvider);
         if (context.mounted) {

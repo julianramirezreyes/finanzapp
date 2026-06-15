@@ -104,9 +104,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
 
     return AppCard(
       style: AppCardStyle.elevated,
-      backgroundColor: isDeclarable
-          ? AppColors.expenseLight
-          : AppColors.incomeLight,
+      backgroundColor: context.stateFill(
+        isDeclarable ? AppColors.expense : AppColors.income,
+      ),
       child: Column(
         children: [
           Container(

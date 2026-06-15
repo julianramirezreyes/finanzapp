@@ -87,7 +87,11 @@ class SettingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.warningLight,
+                // Relleno de estado brightness-aware (SDD #6, 6a): pastel suave
+                // en light, base translúcido en dark.
+                color: isDark
+                    ? AppColors.warning.withValues(alpha: 0.18)
+                    : AppColors.warningLight,
                 borderRadius: BorderRadius.circular(AppSpacing.xs),
               ),
               child: Row(

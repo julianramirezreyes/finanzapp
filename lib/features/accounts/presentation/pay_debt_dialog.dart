@@ -54,10 +54,10 @@ class _PayDebtDialogState extends ConsumerState<PayDebtDialog> {
           children: [
             Text(
               widget.cardTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: context.onSurface,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),

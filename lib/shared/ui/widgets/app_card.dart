@@ -9,6 +9,7 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final Color? backgroundColor;
   final AppCardStyle style;
   final double? elevation;
@@ -20,6 +21,7 @@ class AppCard extends StatelessWidget {
     this.padding,
     this.margin,
     this.onTap,
+    this.onLongPress,
     this.backgroundColor,
     this.style = AppCardStyle.bordered,
     this.elevation,
@@ -60,7 +62,7 @@ class AppCard extends StatelessWidget {
       child: child,
     );
 
-    if (onTap != null) {
+    if (onTap != null || onLongPress != null) {
       return Padding(
         padding: margin ?? EdgeInsets.zero,
         child: Material(
@@ -68,6 +70,7 @@ class AppCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(radius),
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             borderRadius: BorderRadius.circular(radius),
             child: cardContent,
           ),

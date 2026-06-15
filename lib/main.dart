@@ -1,4 +1,5 @@
 import 'package:finanzapp_v2/core/config/supabase_config.dart';
+import 'package:finanzapp_v2/core/auth/session_invalidator.dart';
 import 'package:finanzapp_v2/core/theme/app_theme.dart';
 import 'package:finanzapp_v2/core/theme/theme_mode_provider.dart';
 import 'package:finanzapp_v2/router.dart';
@@ -21,6 +22,12 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
+
+    // Eager-init the sign-out invalidation listener so it lives for the whole
+    // session. On AuthChangeEvent.signedOut it invalidates every user-data
+    // provider, preventing the next user from seeing the previous user's cached
+    // data (spec 2c.1 / 2c.2). Returns void — watching it only primes the listener.
+    ref.watch(sessionInvalidatorProvider);
 
     return MaterialApp.router(
       title: 'FinanzApp v2',

@@ -57,8 +57,8 @@ class RecurringPayment {
       'description': description,
       'amount': amount,
       'frequency': frequency,
-      'start_date': startDate.toIso8601String(),
-      'next_date': nextExecutionDate.toIso8601String(),
+      'start_date': startDate.toUtc().toIso8601String(),
+      'next_date': nextExecutionDate.toUtc().toIso8601String(),
       'is_auto_confirm': isAutoConfirm,
       'is_active': isActive,
     };

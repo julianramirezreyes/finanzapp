@@ -71,7 +71,7 @@ class AppActionChip extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelMedium.copyWith(
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  color: isSelected ? AppColors.primary : context.onSurface,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),

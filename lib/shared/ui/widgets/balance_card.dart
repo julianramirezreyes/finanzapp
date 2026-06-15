@@ -35,7 +35,7 @@ class BalanceCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
         gradient: isPositive
-            ? AppColors.balancePositiveGradient
+            ? AppColors.primaryGradient
             : AppColors.balanceNegativeGradient,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         boxShadow: [

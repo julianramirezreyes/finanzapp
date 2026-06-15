@@ -56,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.xl),
                     decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
+                      color: context.stateFill(AppColors.primary),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -162,7 +162,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppColors.expenseLight,
+                        color: context.stateFill(AppColors.expense),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.buttonRadius,
                         ),

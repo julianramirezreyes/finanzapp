@@ -46,14 +46,18 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
       .where((acc) => acc.includeInNetWorth)
       .fold(0.0, (sum, acc) => sum + acc.balance);
 
-  // Fetch all pockets in parallel
+  // Fetch all pockets in parallel. The catchError is PER-ACCOUNT (inside the
+  // .map), NOT global on Future.wait: a single account whose getPockets fails
+  // (e.g. a transient 401) degrades only that account to an empty list, instead
+  // of collapsing every account's totals to zero (new-fe-datos-3).
   final pocketResults = await Future.wait(
     accounts.map(
-      (acc) => pocketRepo.getPockets(acc.id).then((pockets) {
-        return MapEntry(acc.id, pockets);
-      }),
+      (acc) => pocketRepo
+          .getPockets(acc.id)
+          .then((pockets) => MapEntry(acc.id, pockets))
+          .catchError((_) => MapEntry(acc.id, <Pocket>[])),
     ),
-  ).catchError((_) => <MapEntry<String, List<Pocket>>>[]);
+  );
 
   final pocketsTotals = <String, double>{};
   final pocketsCounts = <String, int>{};
