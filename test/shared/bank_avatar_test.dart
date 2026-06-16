@@ -1,12 +1,17 @@
 import 'package:finanzapp_v2/core/branding/brand_fallback.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/bank_avatar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// WU-4 — escenario 8.5 [auto]: BankAvatar renderiza sin throw para marca
-/// conocida, desconocida y nombre vacío, en LIGHT y DARK. El monograma de marca
-/// es blanco sobre el gradiente (dark-mode-correcto: no usa nada hardcodeado
-/// claro que se pierda en oscuro).
+/// WU-La3 — escenario L.3 [auto]: cuando la marca detectada tiene `asset`,
+/// BankAvatar renderiza el LOGO (SvgPicture para .svg, Image para .png) sobre
+/// un chip neutro; cuando no hay asset / es desconocida, cae al monograma.
+/// Sin throw en LIGHT y DARK.
+///
+/// Nota: este contrato REEMPLAZA el de Fase 1 (monograma blanco sobre gradiente
+/// para marcas conocidas). Ahora todas las marcas de kBankBrands tienen asset,
+/// así que una marca conocida muestra su logo, NO el monograma.
 void main() {
   Future<void> pump(
     WidgetTester tester,
@@ -21,15 +26,16 @@ void main() {
         home: Scaffold(body: Center(child: child)),
       ),
     );
-    // Estático, pero usamos pump(Duration) por convención (no pumpAndSettle).
+    // Estático/asíncrono ligero (decodificación de asset): pump(Duration) por
+    // convención, nunca pumpAndSettle.
     await tester.pump(const Duration(milliseconds: 16));
   }
 
   for (final brightness in [Brightness.light, Brightness.dark]) {
     final label = brightness == Brightness.dark ? 'dark' : 'light';
 
-    group('8.5 [auto] BankAvatar en $label', () {
-      testWidgets('marca conocida (Nequi) renderiza gradiente + monograma blanco',
+    group('L.3 [auto] BankAvatar en $label', () {
+      testWidgets('marca con asset SVG (Nequi) renderiza un SvgPicture',
           (tester) async {
         await pump(
           tester,
@@ -38,21 +44,37 @@ void main() {
         );
 
         expect(tester.takeException(), isNull);
-
-        // Hay un Container con gradient.
-        final container = tester.widget<Container>(
-          find.byType(Container).first,
-        );
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.gradient, isA<LinearGradient>());
-
-        // El monograma es blanco.
-        expect(find.text('NE'), findsOneWidget);
-        final text = tester.widget<Text>(find.text('NE'));
-        expect(text.style?.color, Colors.white);
+        expect(find.byType(SvgPicture), findsOneWidget);
+        // El logo reemplaza al monograma: no hay texto de iniciales.
+        expect(find.text('NE'), findsNothing);
       });
 
-      testWidgets('marca desconocida (Banco Raro) renderiza monograma hash',
+      testWidgets('marca con asset PNG (Global66) renderiza un Image',
+          (tester) async {
+        await pump(
+          tester,
+          const BankAvatar(name: 'Global66', type: 'savings'),
+          brightness: brightness,
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(Image), findsOneWidget);
+        expect(find.byType(SvgPicture), findsNothing);
+      });
+
+      testWidgets('marca con asset PNG (PayU) renderiza un Image',
+          (tester) async {
+        await pump(
+          tester,
+          const BankAvatar(name: 'PayU', type: 'cash'),
+          brightness: brightness,
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(Image), findsOneWidget);
+      });
+
+      testWidgets('marca desconocida (Banco Raro) cae al monograma hash',
           (tester) async {
         await pump(
           tester,
@@ -61,6 +83,8 @@ void main() {
         );
 
         expect(tester.takeException(), isNull);
+        // Sin asset -> sin logo, monograma con color de hash.
+        expect(find.byType(SvgPicture), findsNothing);
         expect(find.text('BR'), findsOneWidget);
 
         final text = tester.widget<Text>(find.text('BR'));
@@ -77,7 +101,7 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.byType(Icon), findsOneWidget);
-        expect(find.byType(Text), findsNothing);
+        expect(find.byType(SvgPicture), findsNothing);
       });
     });
   }

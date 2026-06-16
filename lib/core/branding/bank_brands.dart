@@ -18,6 +18,7 @@ const List<BankBrand> kBankBrands = [
     displayName: 'DaviPlata',
     primary: Color(0xFFED1C24),
     accent: Color(0xFFC4161C),
+    asset: 'assets/brands/daviplata.svg',
     matchers: [BrandMatcher('daviplata')], // word
   ),
   BankBrand(
@@ -25,6 +26,7 @@ const List<BankBrand> kBankBrands = [
     displayName: 'Davivienda',
     primary: Color(0xFFED1C24),
     accent: Color(0xFFC4161C),
+    asset: 'assets/brands/davivienda.svg',
     matchers: [BrandMatcher('davivienda', MatchKind.contains)],
   ),
   BankBrand(
@@ -33,6 +35,7 @@ const List<BankBrand> kBankBrands = [
     primary: Color(0xFFFFD200),
     secondary: Color(0xFFFFC107),
     accent: Color(0xFF8A6D00), // amarillo no contrasta -> accent oscuro
+    asset: 'assets/brands/bancolombia.svg',
     matchers: [BrandMatcher('bancolombia', MatchKind.contains)],
   ),
   BankBrand(
@@ -41,6 +44,7 @@ const List<BankBrand> kBankBrands = [
     primary: Color(0xFFDA0081),
     secondary: Color(0xFF20104A),
     accent: Color(0xFFB80070),
+    asset: 'assets/brands/nequi.svg',
     matchers: [BrandMatcher('nequi')], // word
   ),
   BankBrand(
@@ -48,23 +52,32 @@ const List<BankBrand> kBankBrands = [
     displayName: 'Nubank',
     primary: Color(0xFF820AD1),
     accent: Color(0xFF820AD1),
+    asset: 'assets/brands/nubank.svg',
     matchers: [
       BrandMatcher('nubank', MatchKind.contains),
       BrandMatcher('nu', MatchKind.exact), // 'nu' SOLO exacto (nunca en 'menu')
     ],
   ),
+  // CORRECCIÓN recon (Fase 2): Pibank es AMARILLO (#FFDC00), no verde. accent
+  // oscuro (azul navy) porque el amarillo no contrasta sobre superficie clara.
   BankBrand(
     id: 'pibank',
     displayName: 'Pibank',
-    primary: Color(0xFF00C46A),
-    accent: Color(0xFF009E55),
+    primary: Color(0xFFFFDC00),
+    secondary: Color(0xFF0F265C),
+    accent: Color(0xFF0F265C),
+    asset: 'assets/brands/pibank.svg',
     matchers: [BrandMatcher('pibank', MatchKind.contains)],
   ),
+  // CORRECCIÓN recon (Fase 2): Trii es VERDE (#02FB7E), no navy. accent navy
+  // oscuro para texto legible (el verde claro no contrasta sobre fondo claro).
   BankBrand(
     id: 'trii',
     displayName: 'Trii',
-    primary: Color(0xFF1B1B3A),
-    accent: Color(0xFF1B1B3A),
+    primary: Color(0xFF02FB7E),
+    secondary: Color(0xFF03CA62),
+    accent: Color(0xFF0A4A2C),
+    asset: 'assets/brands/trii.svg',
     matchers: [BrandMatcher('trii')], // word
   ),
   // CORRECCIÓN al boceto (D3): PayPal = MatchKind.word (NO contains). 'contains'
@@ -75,6 +88,7 @@ const List<BankBrand> kBankBrands = [
     primary: Color(0xFF003087),
     secondary: Color(0xFF0070BA),
     accent: Color(0xFF003087),
+    asset: 'assets/brands/paypal.svg',
     matchers: [BrandMatcher('paypal')], // word
   ),
   BankBrand(
@@ -82,6 +96,7 @@ const List<BankBrand> kBankBrands = [
     displayName: 'Mercado Pago',
     primary: Color(0xFF009EE3),
     accent: Color(0xFF007EB5),
+    asset: 'assets/brands/mercadopago.svg',
     matchers: [
       BrandMatcher('mercadopago', MatchKind.contains), // 'MercadoPago' pegado
       BrandMatcher('mercado pago', MatchKind.contains), // ya normalizado
@@ -92,23 +107,31 @@ const List<BankBrand> kBankBrands = [
     displayName: 'DolarApp',
     primary: Color(0xFF111111),
     accent: Color(0xFF111111),
+    asset: 'assets/brands/dolarapp.svg',
     matchers: [BrandMatcher('dolarapp', MatchKind.contains)],
   ),
+  // CORRECCIÓN recon (Fase 2): ARQ ("A la Mano") es NEGRO, no rojo. secondary
+  // marrón oscuro (#3E0F00) de su identidad; accent gris oscuro contrastable.
   BankBrand(
     id: 'arq',
     displayName: 'A la Mano (ARQ)',
-    primary: Color(0xFFED1C24),
-    accent: Color(0xFFC4161C),
+    primary: Color(0xFF000000),
+    secondary: Color(0xFF3E0F00),
+    accent: Color(0xFF1A1A1A),
+    asset: 'assets/brands/arq.svg',
     matchers: [
       BrandMatcher('arq'), // word (no matchea 'marqueta')
       BrandMatcher('a la mano', MatchKind.contains),
     ],
   ),
+  // CORRECCIÓN recon (Fase 2): Global66 es AZUL (#2745C7), no verde.
   BankBrand(
     id: 'global66',
     displayName: 'Global66',
-    primary: Color(0xFF2DCE89),
-    accent: Color(0xFF1FA56C),
+    primary: Color(0xFF2745C7),
+    secondary: Color(0xFF4D66D0),
+    accent: Color(0xFF1E369E),
+    asset: 'assets/brands/global66.png',
     matchers: [BrandMatcher('global66', MatchKind.contains)],
   ),
   BankBrand(
@@ -116,6 +139,7 @@ const List<BankBrand> kBankBrands = [
     displayName: 'PayU',
     primary: Color(0xFFA6C307),
     accent: Color(0xFF7E9400),
+    asset: 'assets/brands/payu.png',
     matchers: [BrandMatcher('payu')], // word
   ),
   // --- Extensible: agregar entidades nuevas como una línea de datos arriba ---

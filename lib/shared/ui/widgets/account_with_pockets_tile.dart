@@ -4,6 +4,7 @@ import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/bank_avatar.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/branded_account_surface.dart';
 import 'package:intl/intl.dart';
 
 class AccountWithPocketsTile extends StatelessWidget {
@@ -67,77 +68,82 @@ class AccountWithPocketsTile extends StatelessWidget {
         vertical: AppSpacing.xs,
         horizontal: 0,
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      // Padding migrado al surface para que wash/watermark lleguen al borde.
+      padding: EdgeInsets.zero,
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Row(
-        children: [
-          BankAvatar(name: name, type: type),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: BrandedAccountSurface(
+        name: name,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            BankAvatar(name: name, type: type),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: AppTypography.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(_typeLabel, style: AppTypography.labelSmall),
+                  if (pocketsCount > 0) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.savings_outlined,
+                          size: 14,
+                          color: AppColors.info,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$pocketsCount bolsillo${pocketsCount > 1 ? 's' : ''} (${currencyFormat.format(pocketsTotal)})',
+                          style: TextStyle(fontSize: 11, color: AppColors.info),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              trailing!,
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  name,
-                  style: AppTypography.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  currencyFormat.format(balance),
+                  style: AppTypography.amountSmall.copyWith(
+                    color: balanceColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(_typeLabel, style: AppTypography.labelSmall),
                 if (pocketsCount > 0) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.savings_outlined,
-                        size: 14,
-                        color: AppColors.info,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$pocketsCount bolsillo${pocketsCount > 1 ? 's' : ''} (${currencyFormat.format(pocketsTotal)})',
-                        style: TextStyle(fontSize: 11, color: AppColors.info),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Total: ${currencyFormat.format(totalValue)}',
+                    style: TextStyle(fontSize: 10, color: AppColors.textMuted),
                   ),
                 ],
               ],
             ),
-          ),
-          if (trailing != null) ...[
-            trailing!,
-            const SizedBox(width: AppSpacing.sm),
-          ],
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                currencyFormat.format(balance),
-                style: AppTypography.amountSmall.copyWith(
-                  color: balanceColor,
-                  fontWeight: FontWeight.w600,
-                ),
+            if (showDragHandle) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                Icons.drag_handle,
+                color: AppColors.textMuted,
+                size: AppSpacing.iconSizeMedium,
               ),
-              if (pocketsCount > 0) ...[
-                const SizedBox(height: 2),
-                Text(
-                  'Total: ${currencyFormat.format(totalValue)}',
-                  style: TextStyle(fontSize: 10, color: AppColors.textMuted),
-                ),
-              ],
             ],
-          ),
-          if (showDragHandle) ...[
-            const SizedBox(width: AppSpacing.sm),
-            Icon(
-              Icons.drag_handle,
-              color: AppColors.textMuted,
-              size: AppSpacing.iconSizeMedium,
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

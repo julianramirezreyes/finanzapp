@@ -48,6 +48,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   shared_preferences: ^2.5.4
+  flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Logos oficiales de marcas bancarias (SDD #8 Fase 2 — bank-branding-logos).
+  assets:
+    - assets/brands/
 
 flutter_launcher_icons:
   android: true

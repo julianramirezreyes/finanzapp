@@ -4,6 +4,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import 'app_card.dart';
 import 'bank_avatar.dart';
+import 'branded_account_surface.dart';
 import 'package:intl/intl.dart';
 
 class AccountTile extends StatelessWidget {
@@ -61,48 +62,53 @@ class AccountTile extends StatelessWidget {
         vertical: AppSpacing.xs,
         horizontal: 0,
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      // Padding migrado al surface para que wash/watermark lleguen al borde.
+      padding: EdgeInsets.zero,
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Row(
-        children: [
-          BankAvatar(name: name, type: type),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: AppTypography.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(_typeLabel, style: AppTypography.labelSmall),
-              ],
+      child: BrandedAccountSurface(
+        name: name,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            BankAvatar(name: name, type: type),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: AppTypography.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(_typeLabel, style: AppTypography.labelSmall),
+                ],
+              ),
             ),
-          ),
-          if (trailing != null) ...[
-            trailing!,
-            const SizedBox(width: AppSpacing.sm),
+            if (trailing != null) ...[
+              trailing!,
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            Text(
+              currencyFormat.format(balance),
+              style: AppTypography.amountSmall.copyWith(
+                color: balanceColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (showDragHandle) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                Icons.drag_handle,
+                color: AppColors.textMuted,
+                size: AppSpacing.iconSizeMedium,
+              ),
+            ],
           ],
-          Text(
-            currencyFormat.format(balance),
-            style: AppTypography.amountSmall.copyWith(
-              color: balanceColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (showDragHandle) ...[
-            const SizedBox(width: AppSpacing.sm),
-            Icon(
-              Icons.drag_handle,
-              color: AppColors.textMuted,
-              size: AppSpacing.iconSizeMedium,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
