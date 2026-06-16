@@ -71,7 +71,16 @@ final routerProvider = Provider<GoRouter>((ref) {
               final id = state.pathParameters['id']!;
               final extra = state.extra as Map<String, dynamic>?;
               final name = extra?['name'] as String? ?? 'Bóveda';
-              return VaultScreen(accountId: id, accountName: name);
+              // type/balance son opcionales: si vienen en extra los usamos, si
+              // no, VaultScreen los resuelve vía accountsListProvider.
+              final type = extra?['type'] as String?;
+              final balance = (extra?['balance'] as num?)?.toDouble();
+              return VaultScreen(
+                accountId: id,
+                accountName: name,
+                accountType: type,
+                accountBalance: balance,
+              );
             },
           ),
         ],

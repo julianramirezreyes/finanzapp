@@ -12,8 +12,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// 1. Un WASH horizontal del color de la marca (`accentFor` o `fallbackColorFor`)
 ///    que se difumina desde la izquierda hacia transparente — sutil y
 ///    brightness-aware (`stateFill`).
-/// 2. Una WATERMARK del logo del banco al fondo-derecha, grande y muy tenue
-///    (opacidad ~0.06), recortada por las esquinas redondeadas.
+/// 2. Una WATERMARK del logo del banco CENTRADA en el espacio vacío de la
+///    tarjeta (no sobre el saldo de la derecha), tenue (opacidad ~0.08) y
+///    recortada por las esquinas redondeadas.
 /// 3. El `child` con padding (que MIGRA aquí desde el AppCard para que el wash y
 ///    la watermark lleguen al borde de la tarjeta).
 ///
@@ -57,14 +58,17 @@ class BrandedAccountSurface extends StatelessWidget {
               ),
             ),
           ),
-          // Capa 1: watermark del logo (si hay marca con asset).
+          // Capa 1: watermark del logo CENTRADA en el espacio vacío (no sobre
+          // el saldo de la derecha). Tenue y recortada por el ClipRRect.
           if (asset != null)
-            Positioned(
-              right: -16,
-              top: -8,
-              bottom: -8,
+            Positioned.fill(
               child: IgnorePointer(
-                child: Opacity(opacity: 0.06, child: _Watermark(asset: asset)),
+                child: Center(
+                  child: Opacity(
+                    opacity: 0.08,
+                    child: _Watermark(asset: asset),
+                  ),
+                ),
               ),
             ),
           // Capa 2: contenido con padding (migrado del AppCard).
@@ -78,9 +82,9 @@ class BrandedAccountSurface extends StatelessWidget {
   }
 }
 
-/// Logo grande y tenue usado como marca de agua. SVG y PNG ramifican por
-/// extensión; el ancho fijo lo hace desbordar a la derecha (recortado por el
-/// ClipRRect del surface).
+/// Logo tenue usado como marca de agua, CENTRADO en la tarjeta. SVG y PNG
+/// ramifican por extensión; la altura fija mantiene un tamaño consistente entre
+/// símbolos (cuadrados) y wordmarks (anchos), recortado por el ClipRRect.
 class _Watermark extends StatelessWidget {
   final String asset;
 
@@ -88,10 +92,10 @@ class _Watermark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double logoWidth = 120;
+    const double logoHeight = 46;
     final isSvg = asset.toLowerCase().endsWith('.svg');
     return SizedBox(
-      width: logoWidth,
+      height: logoHeight,
       child: isSvg
           ? SvgPicture.asset(asset, fit: BoxFit.contain)
           : Image.asset(asset, fit: BoxFit.contain),

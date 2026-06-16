@@ -23,4 +23,8 @@ class AppSpacing {
 
   static const double touchTarget = 48.0;
   static const double fabSize = 56.0;
+
+  /// Alto mínimo del estado vacío de la bóveda: da espacio para centrar el
+  /// watermark de marca tenue detrás del EmptyState dentro de un scroll.
+  static const double emptyStateMinHeight = 420.0;
 }

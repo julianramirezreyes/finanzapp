@@ -279,6 +279,8 @@ class AccountsScreen extends ConsumerWidget {
                   builder: (_) => VaultScreen(
                     accountId: account.id,
                     accountName: account.name,
+                    accountType: account.type,
+                    accountBalance: account.balance,
                   ),
                 ),
               );

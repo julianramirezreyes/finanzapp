@@ -7,11 +7,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 /// Avatar de identidad de marca para la lista de cuentas (SDD #8, Fase 2).
 ///
-/// - Marca conocida CON asset -> chip neutro con el LOGO oficial (SvgPicture
-///   para .svg, Image para .png) en `BoxFit.contain` con padding interno. Los
-///   logos OSCUROS ([_darkLogos]: bancolombia, nequi, pibank, paypal) usan un
-///   chip CLARO garantizado (casi blanco) en ambos temas para no perderse sobre
-///   un chip oscuro; el resto usa el chip neutro dark-safe (`subtleFill`).
+/// - Marca conocida CON asset -> chip con el LOGO oficial (SvgPicture para .svg,
+///   Image para .png) en `BoxFit.contain` con padding interno. El COLOR del chip
+///   es ADAPTATIVO a la luminancia del logo (identificado con un contact-sheet
+///   de los 13 logos sobre chip claro):
+///     - logos OSCUROS ([_darkLogos]: bancolombia, nequi, pibank, paypal) ->
+///       chip CLARO garantizado (casi blanco) en ambos temas, para no perderse
+///       sobre un chip oscuro;
+///     - logos CLAROS ([_lightLogos]: trii, payu, dolarapp, arq) -> chip OSCURO
+///       garantizado (casi negro) en ambos temas, porque sobre un chip
+///       claro/blanco DESAPARECÍAN (ej. el verde brillante de Trii);
+///     - el resto (contraste medio) -> chip neutro dark-safe (`subtleFill`).
 /// - Marca conocida SIN asset -> contenedor con el gradiente de marca y el
 ///   monograma en BLANCO (comportamiento de Fase 1, conservado para regresión).
 /// - Marca desconocida -> contenedor con el color estable por hash a baja
@@ -40,6 +46,39 @@ class BankAvatar extends StatelessWidget {
     'paypal',
   };
 
+  /// Ids cuyo logo es CLARO (verde brillante / lima / crema): sobre un chip
+  /// claro/blanco DESAPARECEN. Se les fuerza un chip OSCURO en ambos temas.
+  /// Identificados con un contact-sheet de los 13 logos sobre chip blanco:
+  ///   - trii      (#02FB7E verde brillante — casi invisible sobre blanco),
+  ///   - payu      (#A6C307 lima — muy pálido sobre blanco),
+  ///   - dolarapp  (verde brillante — el billete pierde contraste),
+  ///   - arq       (crema/beige — invisible sobre casi-blanco).
+  static const Set<String> _lightLogos = {
+    'trii',
+    'payu',
+    'dolarapp',
+    'arq',
+  };
+
+  /// Fondo del chip para logos OSCUROS: casi blanco, garantizado en ambos temas.
+  static const Color darkLogoChipColor = Color(0xFFF5F5F7);
+
+  /// Fondo del chip para logos CLAROS: casi negro, garantizado en ambos temas.
+  static const Color lightLogoChipColor = Color(0xFF1E1E1E);
+
+  /// Resuelve el color de fondo del chip para una marca (por `id`):
+  ///   - logo OSCURO  -> [darkLogoChipColor] (chip claro garantizado),
+  ///   - logo CLARO   -> [lightLogoChipColor] (chip oscuro garantizado),
+  ///   - resto        -> null (el caller usa su chip neutro dark-safe).
+  /// `isDark` se acepta para futuras variaciones por tema, pero hoy el chip de
+  /// contraste es el mismo en ambos brillos (forzado a propósito).
+  static Color? chipBackgroundColorFor(String? id, {required bool isDark}) {
+    if (id == null) return null;
+    if (_lightLogos.contains(id)) return lightLogoChipColor;
+    if (_darkLogos.contains(id)) return darkLogoChipColor;
+    return null;
+  }
+
   IconData _typeIcon() {
     switch (type.toLowerCase()) {
       case 'cash':
@@ -63,9 +102,10 @@ class BankAvatar extends StatelessWidget {
     final radius = BorderRadius.circular(AppSpacing.buttonRadius);
 
     if (brand != null && brand.asset != null) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       return _LogoChip(
         asset: brand.asset!,
-        isDarkLogo: _darkLogos.contains(brand.id),
+        forcedChipColor: chipBackgroundColorFor(brand.id, isDark: isDark),
         size: size,
         radius: radius,
       );
@@ -122,27 +162,28 @@ class BankAvatar extends StatelessWidget {
   static Color? accentFor(String name) => detectBrand(name)?.primary;
 }
 
-/// Chip neutro que pinta el logo oficial de una marca con padding interno.
+/// Chip que pinta el logo oficial de una marca con padding interno. El color de
+/// fondo es ADAPTATIVO: si [forcedChipColor] viene dado (logo oscuro -> chip
+/// claro; logo claro -> chip oscuro) se usa; si es null, cae al chip neutro
+/// dark-safe (`subtleFill`).
 class _LogoChip extends StatelessWidget {
   final String asset;
-  final bool isDarkLogo;
+  final Color? forcedChipColor;
   final double size;
   final BorderRadius radius;
 
   const _LogoChip({
     required this.asset,
-    required this.isDarkLogo,
+    required this.forcedChipColor,
     required this.size,
     required this.radius,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Logos oscuros -> chip claro garantizado en ambos temas (casi blanco) para
-    // que el logo nunca se pierda. Resto -> chip neutro dark-safe.
-    final chipColor = isDarkLogo
-        ? const Color(0xFFF5F5F7)
-        : context.subtleFill();
+    // Logo oscuro/claro -> chip forzado (claro/oscuro) en ambos temas para que
+    // el logo nunca se pierda. Resto -> chip neutro dark-safe.
+    final chipColor = forcedChipColor ?? context.subtleFill();
 
     final isSvg = asset.toLowerCase().endsWith('.svg');
 

@@ -112,4 +112,94 @@ void main() {
       expect(BankAvatar.accentFor('Banco Raro'), isNull);
     });
   });
+
+  // WU-chip — FIX de contraste: el chip del logo debe ser OSCURO para logos
+  // CLAROS (trii verde brillante, payu lima, dolarapp, arq crema) que se
+  // perdían sobre el chip claro, y CLARO para logos oscuros (bancolombia,
+  // nequi, pibank, paypal). Identificado con un contact-sheet de los 13 logos.
+  group('chip adaptativo por luminancia del logo', () {
+    // Helper: encuentra el Container del chip que envuelve el logo y devuelve su
+    // color de fondo. El chip es el Container con BoxDecoration.color que tiene
+    // un SvgPicture/Image como descendiente.
+    Color chipColorOf(WidgetTester tester) {
+      final containers = tester.widgetList<Container>(find.byType(Container));
+      for (final c in containers) {
+        final deco = c.decoration;
+        if (deco is BoxDecoration && deco.color != null) {
+          return deco.color!;
+        }
+      }
+      fail('No se encontró el Container del chip con color de fondo');
+    }
+
+    testWidgets('logo CLARO (Trii) usa chip OSCURO', (tester) async {
+      await pump(
+        tester,
+        const BankAvatar(name: 'Trii', type: 'investment'),
+        brightness: Brightness.light,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byType(SvgPicture), findsOneWidget);
+      // Chip oscuro para que el verde brillante de Trii contraste.
+      expect(chipColorOf(tester), BankAvatar.lightLogoChipColor);
+    });
+
+    testWidgets('logo CLARO (PayU) usa chip OSCURO', (tester) async {
+      await pump(
+        tester,
+        const BankAvatar(name: 'PayU', type: 'cash'),
+        brightness: Brightness.light,
+      );
+      expect(tester.takeException(), isNull);
+      expect(chipColorOf(tester), BankAvatar.lightLogoChipColor);
+    });
+
+    testWidgets('logo OSCURO (Bancolombia) usa chip CLARO', (tester) async {
+      await pump(
+        tester,
+        const BankAvatar(name: 'Bancolombia', type: 'savings'),
+        brightness: Brightness.light,
+      );
+      expect(tester.takeException(), isNull);
+      expect(chipColorOf(tester), BankAvatar.darkLogoChipColor);
+    });
+
+    test('clasificación de chip por id (función pura)', () {
+      // CLAROS -> chip oscuro.
+      for (final id in ['trii', 'payu', 'dolarapp', 'arq']) {
+        expect(
+          BankAvatar.chipBackgroundColorFor(id, isDark: false),
+          BankAvatar.lightLogoChipColor,
+          reason: '$id es un logo claro -> chip oscuro',
+        );
+      }
+      // OSCUROS -> chip claro garantizado.
+      for (final id in ['bancolombia', 'nequi', 'pibank', 'paypal']) {
+        expect(
+          BankAvatar.chipBackgroundColorFor(id, isDark: false),
+          BankAvatar.darkLogoChipColor,
+          reason: '$id es un logo oscuro -> chip claro',
+        );
+      }
+      // Resto -> null (usa el chip neutro dark-safe del contexto).
+      expect(
+        BankAvatar.chipBackgroundColorFor('davivienda', isDark: false),
+        isNull,
+        reason: 'logo de contraste medio -> chip neutro por defecto',
+      );
+    });
+
+    testWidgets('logo CLARO usa chip oscuro en light y dark sin throw',
+        (tester) async {
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        await pump(
+          tester,
+          const BankAvatar(name: 'Trii', type: 'investment'),
+          brightness: brightness,
+        );
+        expect(tester.takeException(), isNull);
+        expect(chipColorOf(tester), BankAvatar.lightLogoChipColor);
+      }
+    });
+  });
 }

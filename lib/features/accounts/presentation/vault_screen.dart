@@ -13,8 +13,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
-import 'package:finanzapp_v2/shared/ui/widgets/empty_state.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/vault_empty_state.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/branded_vault_header.dart';
+import 'package:finanzapp_v2/shared/ui/widgets/branded_screen_background.dart';
 import 'package:finanzapp_v2/shared/ui/animations/fade_slide.dart';
 import 'package:intl/intl.dart';
 
@@ -22,10 +24,22 @@ class VaultScreen extends ConsumerStatefulWidget {
   final String accountId;
   final String accountName;
 
+  /// Tipo de la cuenta (savings/checking/cash/credit/investment). Opcional: si
+  /// no se pasa (p.ej. navegación por go_router), se resuelve vía
+  /// `accountsListProvider` por `accountId`.
+  final String? accountType;
+
+  /// Saldo de la cuenta. Opcional: si no se pasa, se resuelve vía
+  /// `accountsListProvider` por `accountId`. Si no hay dato, el header omite el
+  /// total (lo soporta como null).
+  final double? accountBalance;
+
   const VaultScreen({
     super.key,
     required this.accountId,
     required this.accountName,
+    this.accountType,
+    this.accountBalance,
   });
 
   @override
@@ -85,15 +99,75 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     return ordered;
   }
 
+  /// Mapea el tipo crudo de la cuenta a una etiqueta legible (mismo criterio
+  /// que `AccountWithPocketsTile._typeLabel`). Devuelve null si no hay tipo.
+  String? _typeLabel(String? type) {
+    if (type == null || type.isEmpty) return null;
+    switch (type.toLowerCase()) {
+      case 'cash':
+        return 'Efectivo';
+      case 'savings':
+        return 'Ahorros';
+      case 'checking':
+        return 'Corriente';
+      case 'credit':
+        return 'Crédito';
+      case 'investment':
+        return 'Inversión';
+      default:
+        return type;
+    }
+  }
+
+  /// Resuelve (tipo, balance) de la cuenta. Prioriza los params explícitos
+  /// (vía Navigator.push desde accounts_screen, ruta limpia sin fetch extra) y,
+  /// si faltan, cae a un lookup por `accountId` en `accountsListProvider`
+  /// (cubre la navegación por go_router que solo lleva el nombre). Si nada
+  /// resuelve, devuelve nulls y el header degrada (subtítulo sin tipo / sin
+  /// total) sin romper.
+  ({String? type, double? balance}) _resolveAccountMeta() {
+    var type = widget.accountType;
+    var balance = widget.accountBalance;
+
+    if (type == null || balance == null) {
+      final accountsAsync = ref.watch(accountsListProvider);
+      final account = accountsAsync.maybeWhen(
+        data: (accounts) {
+          for (final a in accounts) {
+            if (a.id == widget.accountId) return a;
+          }
+          return null;
+        },
+        orElse: () => null,
+      );
+      if (account != null) {
+        type ??= account.type;
+        balance ??= account.balance;
+      }
+    }
+
+    return (type: type, balance: balance);
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(vaultItemsProvider(widget.accountId));
     final debtAsync = ref.watch(vaultDebtSummaryProvider(widget.accountId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(title: Text('Bóveda: ${widget.accountName}')),
-      body: itemsAsync.when(
+    final meta = _resolveAccountMeta();
+    final typeLabel = _typeLabel(meta.type);
+    final subtitle = typeLabel != null ? 'Bóveda · $typeLabel' : 'Bóveda';
+    final currency = NumberFormat.currency(
+      symbol: '\$',
+      decimalDigits: 0,
+      locale: 'es_CO',
+    );
+    final total = meta.balance != null
+        ? currency.format(meta.balance)
+        : null;
+
+    final body = itemsAsync.when(
         data: (items) {
           final creditCards = items
               .where((i) => i.isCard && i.cardType == 'credit')
@@ -106,12 +180,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               child: Column(
                 children: [
                   if (hasCreditCards) _buildDebtPanel(debtAsync, isDark),
-                  EmptyState(
-                    icon: Icons.lock_outline,
-                    title: 'Bóveda vacía',
-                    subtitle: 'Guarda información sensible de tus cuentas',
-                    actionLabel: 'Agregar Ítem',
-                    onAction: () => _showAddItemDialog(context),
+                  // Estado vacío con la marca de agua tenue de la entidad detrás
+                  // (solo aquí, NUNCA cuando la bóveda tiene ítems).
+                  SizedBox(
+                    height: AppSpacing.emptyStateMinHeight,
+                    child: VaultEmptyState(
+                      accountName: widget.accountName,
+                      onAddItem: () => _showAddItemDialog(context),
+                    ),
                   ),
                 ],
               ),
@@ -179,6 +255,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text("Error: $e")),
+      );
+
+    return Scaffold(
+      body: Column(
+        children: [
+          // Hero de marca FIJO arriba (reemplaza el AppBar plano). Respeta el
+          // SafeArea superior internamente y NO scrollea con el contenido.
+          BrandedVaultHeader(
+            name: widget.accountName,
+            subtitle: subtitle,
+            total: total,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          // Body con wash de marca SIN watermark (showLogo:false) para no
+          // duplicar la marca de agua que ya trae el header.
+          Expanded(
+            child: BrandedScreenBackground(
+              name: widget.accountName,
+              showLogo: false,
+              child: body,
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddItemDialog(context),
