@@ -679,8 +679,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
             ),
             Text(
               'Presup: ${currency.format(allocated)} / ${currency.format(allocatedCap)}',
-              style: TextStyle(
-                fontSize: 9,
+              style: AppTypography.captionSmall.copyWith(
                 fontWeight: isAllocationOver
                     ? FontWeight.w600
                     : FontWeight.normal,

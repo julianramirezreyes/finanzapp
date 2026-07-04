@@ -78,6 +78,15 @@ class AppTypography {
     color: AppColors.textMuted,
   );
 
+  /// Color secundario DELIBERADO (caption de mínimo énfasis, ej. chips de
+  /// asignación de presupuesto); NO heredar onSurface en este slice (SDD #6,
+  /// 6a). Usar `copyWith(color: ...)` para el tono de alerta (AppColors.expense).
+  static TextStyle get captionSmall => GoogleFonts.inter(
+    fontSize: 9,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+  );
+
   static TextStyle get balance => GoogleFonts.inter(
     fontSize: 36,
     fontWeight: FontWeight.w700,
