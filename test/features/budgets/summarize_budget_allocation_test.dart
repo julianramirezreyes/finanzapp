@@ -64,6 +64,8 @@ void main() {
         );
 
         expect(summary.allocatedExpense, 300000);
+        expect(summary.allocatedSaving, 100000);
+        expect(summary.allocatedInvestment, 50000);
         expect(summary.isExpenseOver, isFalse);
         expect(summary.isSavingOver, isFalse);
         expect(summary.isInvestmentOver, isFalse);
@@ -154,21 +156,18 @@ void main() {
         },
       );
 
-      test(
-        '(e2) zero cap with NO allocation -> over-flag false (R2.2)',
-        () {
-          final summary = summarizeBudgetAllocation(
-            budgets: const [],
-            expensePlan: 500000,
-            savingPlan: 300000,
-            investPlan: 0,
-          );
+      test('(e2) zero cap with NO allocation -> over-flag false (R2.2)', () {
+        final summary = summarizeBudgetAllocation(
+          budgets: const [],
+          expensePlan: 500000,
+          savingPlan: 300000,
+          investPlan: 0,
+        );
 
-          expect(summary.allocatedInvestment, 0);
-          expect(summary.isInvestmentOver, isFalse);
-          expect(summary.hasAnyCategoryOver, isFalse);
-        },
-      );
+        expect(summary.allocatedInvestment, 0);
+        expect(summary.isInvestmentOver, isFalse);
+        expect(summary.hasAnyCategoryOver, isFalse);
+      });
 
       test(
         '(f) recurrent and goal metas fold identically into the same category sum (R9)',
@@ -240,21 +239,18 @@ void main() {
         },
       );
 
-      test(
-        '(h) totalPlan == 0 -> progress 0 (no division by zero)',
-        () {
-          final summary = summarizeBudgetAllocation(
-            budgets: const [],
-            expensePlan: 0,
-            savingPlan: 0,
-            investPlan: 0,
-          );
+      test('(h) totalPlan == 0 -> progress 0 (no division by zero)', () {
+        final summary = summarizeBudgetAllocation(
+          budgets: const [],
+          expensePlan: 0,
+          savingPlan: 0,
+          investPlan: 0,
+        );
 
-          expect(summary.progress, 0.0);
-          expect(summary.totalAllocated, 0);
-          expect(summary.remaining, 0);
-        },
-      );
+        expect(summary.progress, 0.0);
+        expect(summary.totalAllocated, 0);
+        expect(summary.remaining, 0);
+      });
     },
   );
 }
