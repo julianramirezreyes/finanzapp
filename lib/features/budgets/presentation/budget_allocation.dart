@@ -17,6 +17,8 @@ import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 /// `householdId` field — there is nothing for the function to filter by;
 /// archival exclusion (R8) is a server-side guarantee with no automated
 /// frontend test (verified by backend/documentation review only).
+/// `Budget.type` values outside `'expense'`/`'saving'`/`'investment'` are
+/// silently excluded from all totals, mirroring `summarizeBudgetConsumption`.
 class BudgetAllocationSummary {
   final double allocatedExpense;
   final double allocatedSaving;

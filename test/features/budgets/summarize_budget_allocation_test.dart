@@ -68,6 +68,9 @@ void main() {
         expect(summary.isSavingOver, isFalse);
         expect(summary.isInvestmentOver, isFalse);
         expect(summary.hasAnyCategoryOver, isFalse);
+        expect(summary.expensePlan, 500000);
+        expect(summary.savingPlan, 300000);
+        expect(summary.investPlan, 200000);
       });
 
       test(
@@ -84,6 +87,7 @@ void main() {
 
           expect(summary.allocatedExpense, 500000);
           expect(summary.isExpenseOver, isFalse);
+          expect(summary.hasAnyCategoryOver, isFalse);
         },
       );
 
@@ -128,6 +132,7 @@ void main() {
           expect(summary.isSavingOver, isTrue);
           expect(summary.isInvestmentOver, isFalse);
           expect(summary.hasAnyCategoryOver, isTrue);
+          expect(summary.allocatedSaving, 400000);
         },
       );
 
@@ -236,7 +241,7 @@ void main() {
       );
 
       test(
-        'totalPlan == 0 -> progress 0 (no division by zero)',
+        '(h) totalPlan == 0 -> progress 0 (no division by zero)',
         () {
           final summary = summarizeBudgetAllocation(
             budgets: const [],
