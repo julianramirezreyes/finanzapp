@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_form_dialog.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/budget_allocation.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
@@ -374,6 +375,15 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
         final isOverBudget = remaining < 0;
         final progress = summary.progress;
 
+        // "Presupuestado vs Plan": PLANNED allocation (Σ monthlyQuota) vs the
+        // same category caps — independent of the consumption summary above.
+        final allocationSummary = summarizeBudgetAllocation(
+          budgets: budgets,
+          expensePlan: expenseAmt,
+          savingPlan: savingAmt,
+          investPlan: investAmt,
+        );
+
         return AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,6 +539,8 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              _buildAllocationRow(allocationSummary, currency),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
@@ -538,6 +550,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     expenseAmt,
                     AppColors.expense,
                     currency,
+                    allocated: allocationSummary.allocatedExpense,
+                    allocatedCap: allocationSummary.expensePlan,
+                    isAllocationOver: allocationSummary.isExpenseOver,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _buildPersonalConsumedChip(
@@ -546,6 +561,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     savingAmt,
                     AppColors.savings,
                     currency,
+                    allocated: allocationSummary.allocatedSaving,
+                    allocatedCap: allocationSummary.savingPlan,
+                    isAllocationOver: allocationSummary.isSavingOver,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _buildPersonalConsumedChip(
@@ -554,6 +572,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                     investAmt,
                     AppColors.investment,
                     currency,
+                    allocated: allocationSummary.allocatedInvestment,
+                    allocatedCap: allocationSummary.investPlan,
+                    isAllocationOver: allocationSummary.isInvestmentOver,
                   ),
                 ],
               ),
@@ -566,14 +587,59 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     );
   }
 
+  /// "Presupuestado vs Plan": a QUIET, TEXT-ONLY subordinate row placed below
+  /// "Gastado vs Plan" (ADR-5). Never a new progress bar. Healthy state is
+  /// NEUTRAL/MUTED (deliberately NOT income-green); alert tone is driven by
+  /// `hasAnyCategoryOver` (ADR-6), independent of the consumption state above.
+  Widget _buildAllocationRow(
+    BudgetAllocationSummary summary,
+    NumberFormat currency,
+  ) {
+    final toneColor = summary.hasAnyCategoryOver
+        ? AppColors.expense
+        : AppColors.textSecondary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Presupuestado vs Plan',
+              style: AppTypography.labelSmall.copyWith(color: toneColor),
+            ),
+            Text(
+              '${currency.format(summary.totalAllocated)} / ${currency.format(summary.totalPlan)}',
+              style: AppTypography.labelSmall.copyWith(
+                color: toneColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '${(summary.progress * 100).toStringAsFixed(0)}% del plan presupuestado',
+          style: AppTypography.labelSmall.copyWith(color: toneColor),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPersonalConsumedChip(
     String label,
     double consumed,
     double budgeted,
     Color color,
-    NumberFormat currency,
-  ) {
+    NumberFormat currency, {
+    required double allocated,
+    required double allocatedCap,
+    required bool isAllocationOver,
+  }) {
     final isOver = consumed > budgeted && budgeted > 0;
+    final allocationToneColor = isAllocationOver
+        ? AppColors.expense
+        : AppColors.textSecondary;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -610,6 +676,16 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
             Text(
               'de ${currency.format(budgeted)}',
               style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            ),
+            Text(
+              'Presup: ${currency.format(allocated)} / ${currency.format(allocatedCap)}',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: isAllocationOver
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+                color: allocationToneColor,
+              ),
             ),
           ],
         ),
