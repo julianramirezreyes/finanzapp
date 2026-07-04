@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_form_dialog.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/budget_allocation.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
@@ -415,6 +416,15 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
         final isOverBudget = remaining < 0;
         final progress = summary.progress;
 
+        // "Presupuestado vs Plan": PLANNED allocation (Σ monthlyQuota) vs the
+        // FULL household caps — independent of the consumption summary above.
+        final allocationSummary = summarizeBudgetAllocation(
+          budgets: budgets,
+          expensePlan: expenseAmt,
+          savingPlan: savingAmt,
+          investPlan: investAmt,
+        );
+
         return AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,6 +580,8 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              _buildAllocationRow(allocationSummary, currency),
               const SizedBox(height: AppSpacing.md),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,6 +592,9 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     expenseAmt,
                     AppColors.expense,
                     currency,
+                    allocated: allocationSummary.allocatedExpense,
+                    allocatedCap: allocationSummary.expensePlan,
+                    isAllocationOver: allocationSummary.isExpenseOver,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _buildConsumedChip(
@@ -588,6 +603,9 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     savingAmt,
                     AppColors.savings,
                     currency,
+                    allocated: allocationSummary.allocatedSaving,
+                    allocatedCap: allocationSummary.savingPlan,
+                    isAllocationOver: allocationSummary.isSavingOver,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _buildConsumedChip(
@@ -596,6 +614,9 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                     investAmt,
                     AppColors.investment,
                     currency,
+                    allocated: allocationSummary.allocatedInvestment,
+                    allocatedCap: allocationSummary.investPlan,
+                    isAllocationOver: allocationSummary.isInvestmentOver,
                   ),
                 ],
               ),
@@ -608,16 +629,63 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     );
   }
 
+  /// "Presupuestado vs Plan": a QUIET, TEXT-ONLY subordinate row placed below
+  /// "Gastado vs Plan" (ADR-5). Never a new progress bar. Healthy state is
+  /// NEUTRAL/MUTED (deliberately NOT income-green); alert tone is driven by
+  /// `hasAnyCategoryOver` (ADR-6), independent of the consumption state above.
+  /// Caps reflect the FULL household plan `(incomeA + incomeB) × pct` — never
+  /// a per-member split (resolved decision #4).
+  Widget _buildAllocationRow(
+    BudgetAllocationSummary summary,
+    NumberFormat currency,
+  ) {
+    final toneColor = summary.hasAnyCategoryOver
+        ? AppColors.expense
+        : AppColors.textSecondary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Presupuestado vs Plan',
+              style: AppTypography.labelSmall.copyWith(color: toneColor),
+            ),
+            Text(
+              '${currency.format(summary.totalAllocated)} / ${currency.format(summary.totalPlan)}',
+              style: AppTypography.labelSmall.copyWith(
+                color: toneColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '${(summary.progress * 100).toStringAsFixed(0)}% del plan presupuestado',
+          style: AppTypography.labelSmall.copyWith(color: toneColor),
+        ),
+      ],
+    );
+  }
+
   Widget _buildConsumedChip(
     String label,
     double consumed,
     double budgeted,
     Color color,
-    NumberFormat currency,
-  ) {
+    NumberFormat currency, {
+    required double allocated,
+    required double allocatedCap,
+    required bool isAllocationOver,
+  }) {
     // R3: household consumption is the TOTAL aggregate; it is not split by
     // contribution ratio (that describes planned aporte, not executed spend).
     final isOver = consumed > budgeted && budgeted > 0;
+    final allocationToneColor = isAllocationOver
+        ? AppColors.expense
+        : AppColors.textSecondary;
     return Expanded(
       flex: 1,
       child: Container(
@@ -654,6 +722,16 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
             Text(
               'de ${currency.format(budgeted)}',
               style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+            ),
+            Text(
+              'Presup: ${currency.format(allocated)} / ${currency.format(allocatedCap)}',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: isAllocationOver
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+                color: allocationToneColor,
+              ),
             ),
           ],
         ),
