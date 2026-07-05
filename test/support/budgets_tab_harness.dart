@@ -192,8 +192,7 @@ Future<void> pumpPersonalBudgetTab(
       householdBudgetOverrides(
         household: household,
         config:
-            householdConfig ??
-            fakeHouseholdConfig(householdId: household.id),
+            householdConfig ?? fakeHouseholdConfig(householdId: household.id),
         budgets: householdBudgets,
       ),
     );

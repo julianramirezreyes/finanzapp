@@ -86,9 +86,7 @@ void main() {
 
       // Personal's own row shows ONLY its own totals (111,111 / 1,000,000).
       expect(
-        find.text(
-          '${_currency.format(111111)} / ${_currency.format(1000000)}',
-        ),
+        find.text('${_currency.format(111111)} / ${_currency.format(1000000)}'),
         findsOneWidget,
       );
       // Personal's own chip shows ONLY its own allocation (111,111 / 500,000).
@@ -101,9 +99,7 @@ void main() {
 
       // Hogar's own row shows ONLY its own totals (222,222 / 2,000,000).
       expect(
-        find.text(
-          '${_currency.format(222222)} / ${_currency.format(2000000)}',
-        ),
+        find.text('${_currency.format(222222)} / ${_currency.format(2000000)}'),
         findsOneWidget,
       );
       // Hogar's own chip shows ONLY its own allocation (222,222 / 1,000,000).
@@ -116,15 +112,11 @@ void main() {
 
       // Cross-contamination guard: neither tab shows the OTHER's totals.
       expect(
-        find.text(
-          '${_currency.format(222222)} / ${_currency.format(1000000)}',
-        ),
+        find.text('${_currency.format(222222)} / ${_currency.format(1000000)}'),
         findsNothing,
       );
       expect(
-        find.text(
-          '${_currency.format(111111)} / ${_currency.format(2000000)}',
-        ),
+        find.text('${_currency.format(111111)} / ${_currency.format(2000000)}'),
         findsNothing,
       );
       expect(
