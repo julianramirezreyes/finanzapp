@@ -1,4 +1,6 @@
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -82,6 +84,30 @@ BudgetFormResult mapBudgetAmounts({
   );
 }
 
+/// Point-in-time, provider-agnostic snapshot used to render the dialog's live
+/// "Presupuestado vs Plan" preview while creating/editing a meta (ADR-3). The
+/// dialog NEVER reads Riverpod providers itself — the caller (`_showGoalDialog`,
+/// PR4) builds this plain object from data it already has (or explicitly
+/// reads) and injects it.
+///
+/// [otherAllocatedByType] MUST already exclude the meta currently being
+/// edited (`existing?.id`) — that self-exclusion is the CALLER's
+/// responsibility (spec R11.1), not something this dialog re-derives.
+class AllocationPreviewData {
+  const AllocationPreviewData({
+    required this.planCapByType,
+    required this.otherAllocatedByType,
+  });
+
+  /// Category cap (`income × pct/100`), keyed by `Budget.type`
+  /// (`expense`/`saving`/`investment`).
+  final Map<String, double> planCapByType;
+
+  /// Σ `monthlyQuota` of all OTHER non-archived, same-scope metas per
+  /// category, keyed by `Budget.type`. Excludes the meta being edited, if any.
+  final Map<String, double> otherAllocatedByType;
+}
+
 /// Diálogo compartido (Personal y Hogar) para crear y editar una meta.
 ///
 /// Es AGNÓSTICO del repositorio: recolecta y valida la entrada y, al guardar,
@@ -91,11 +117,18 @@ class BudgetFormDialog extends StatefulWidget {
   const BudgetFormDialog({
     super.key,
     this.existing,
+    this.allocationPreview,
     required this.onSubmit,
   });
 
   /// null => crear; no-null => editar (precarga el formulario).
   final Budget? existing;
+
+  /// Snapshot opcional (ADR-3) para la vista previa "Presupuestado vs Plan".
+  /// null => sin snapshot disponible (loading/error del caller) => la vista
+  /// previa se degrada por completo (no bloquea la apertura del diálogo).
+  final AllocationPreviewData? allocationPreview;
+
   final void Function(BudgetFormResult) onSubmit;
 
   @override
@@ -168,6 +201,72 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     );
   }
 
+  String _categoryLabel(String type) {
+    switch (type) {
+      case 'saving':
+        return 'Ahorro';
+      case 'investment':
+        return 'Inversión';
+      case 'expense':
+      default:
+        return 'Gasto';
+    }
+  }
+
+  /// Live "Presupuestado vs Plan" preview line for the CURRENTLY selected
+  /// category (R10/R11), or `null` when there is nothing to show: no
+  /// snapshot (`allocationPreview == null`, ADR-3 degrade), an unknown
+  /// category key, or the transient goal-type `months < 1` window (ADR-4,
+  /// mirrors the existing "Cuota mensual" hint's own gate).
+  Widget? _buildAllocationPreview(double amount, int months) {
+    final preview = widget.allocationPreview;
+    if (preview == null) return null;
+
+    final cap = preview.planCapByType[_type];
+    if (cap == null) return null;
+
+    if (!_isRecurrent && months < 1) return null;
+
+    final projectedQuota = mapBudgetAmounts(
+      name: _nameController.text,
+      type: _type,
+      isRecurrent: _isRecurrent,
+      months: months,
+      amount: amount,
+    ).monthlyQuota;
+
+    final otherAllocated = preview.otherAllocatedByType[_type] ?? 0;
+    final projectedTotal = otherAllocated + projectedQuota;
+    final categoryLabel = _categoryLabel(_type);
+
+    // R10.5/R2.3 zero-cap display guard: NEVER evaluate `.../cap` when
+    // cap == 0 (would render `Infinity` in Dart). Warn via MESSAGE only when
+    // something is actually projected against a plan that grants nothing;
+    // otherwise mirror R2.2 and show nothing.
+    if (cap == 0) {
+      if (projectedTotal <= 0) return null;
+      return Text(
+        'Sin plan asignado a $categoryLabel: esta meta lo supera',
+        style: AppTypography.captionSmall.copyWith(
+          color: AppColors.expense,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    final isOver = projectedTotal > cap;
+    final pct = (projectedTotal / cap * 100).toStringAsFixed(0);
+    final toneColor = isOver ? AppColors.expense : AppColors.textSecondary;
+
+    return Text(
+      '$pct% del plan de $categoryLabel',
+      style: AppTypography.captionSmall.copyWith(
+        color: toneColor,
+        fontWeight: isOver ? FontWeight.w600 : FontWeight.normal,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(
@@ -179,6 +278,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     final amount = double.tryParse(_amountController.text) ?? 0;
     final months = int.tryParse(_monthsController.text) ?? 0;
     final quota = (!_isRecurrent && months >= 1) ? amount / months : 0;
+    final allocationPreview = _buildAllocationPreview(amount, months);
 
     return AlertDialog(
       title: Text(widget.existing == null ? 'Nueva Meta' : 'Editar Meta'),
@@ -233,6 +333,10 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
                 'Cuota mensual: ${currency.format(quota)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            ],
+            if (allocationPreview != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              allocationPreview,
             ],
           ],
         ),
