@@ -2,6 +2,7 @@ import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -86,18 +87,28 @@ BudgetFormResult mapBudgetAmounts({
 
 /// Point-in-time, provider-agnostic snapshot used to render the dialog's live
 /// "Presupuestado vs Plan" preview while creating/editing a meta (ADR-3). The
-/// dialog NEVER reads Riverpod providers itself — the caller (`_showGoalDialog`,
-/// PR4) builds this plain object from data it already has (or explicitly
-/// reads) and injects it.
+/// dialog NEVER reads Riverpod providers itself — the caller builds this
+/// plain object from data it already has (or explicitly reads) and injects
+/// it.
 ///
 /// [otherAllocatedByType] MUST already exclude the meta currently being
 /// edited (`existing?.id`) — that self-exclusion is the CALLER's
 /// responsibility (spec R11.1), not something this dialog re-derives.
+///
+/// [planCapByType] and [otherAllocatedByType] MUST share the same set of
+/// category keys — a mismatch signals a malformed caller-side snapshot and
+/// is caught in development via [assert].
 class AllocationPreviewData {
-  const AllocationPreviewData({
+  AllocationPreviewData({
     required this.planCapByType,
     required this.otherAllocatedByType,
-  });
+  }) : assert(
+         setEquals(
+           planCapByType.keys.toSet(),
+           otherAllocatedByType.keys.toSet(),
+         ),
+         'planCapByType and otherAllocatedByType must have matching category keys',
+       );
 
   /// Category cap (`income × pct/100`), keyed by `Budget.type`
   /// (`expense`/`saving`/`investment`).
@@ -201,17 +212,16 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     );
   }
 
-  String _categoryLabel(String type) {
-    switch (type) {
-      case 'saving':
-        return 'Ahorro';
-      case 'investment':
-        return 'Inversión';
-      case 'expense':
-      default:
-        return 'Gasto';
-    }
-  }
+  /// Single source of truth for the category dropdown labels, also used by
+  /// the allocation preview (F5: previously duplicated as a hardcoded
+  /// `DropdownMenuItem` list).
+  static const Map<String, String> _categoryLabels = {
+    'expense': 'Gasto',
+    'saving': 'Ahorro',
+    'investment': 'Inversión',
+  };
+
+  String _categoryLabel(String type) => _categoryLabels[type] ?? 'Gasto';
 
   /// Live "Presupuestado vs Plan" preview line for the CURRENTLY selected
   /// category (R10/R11), or `null` when there is nothing to show: no
@@ -222,8 +232,15 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     final preview = widget.allocationPreview;
     if (preview == null) return null;
 
-    final cap = preview.planCapByType[_type];
-    if (cap == null) return null;
+    // F2: symmetric missing-key handling — a missing cap used to hide the
+    // preview while a missing `otherAllocatedByType` entry silently
+    // substituted 0. Either map lacking the current category now hides the
+    // preview the same way.
+    if (!preview.planCapByType.containsKey(_type) ||
+        !preview.otherAllocatedByType.containsKey(_type)) {
+      return null;
+    }
+    final cap = preview.planCapByType[_type]!;
 
     if (!_isRecurrent && months < 1) return null;
 
@@ -235,7 +252,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
       amount: amount,
     ).monthlyQuota;
 
-    final otherAllocated = preview.otherAllocatedByType[_type] ?? 0;
+    final otherAllocated = preview.otherAllocatedByType[_type]!;
     final projectedTotal = otherAllocated + projectedQuota;
     final categoryLabel = _categoryLabel(_type);
 
@@ -254,8 +271,23 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
       );
     }
 
+    // R10.5 never-Infinity guard: the amount TextField has a numeric
+    // keyboard but no `inputFormatters`, so `double.tryParse` accepts
+    // 'Infinity', 'NaN', and overflowing literals like '1e400'. Degrade the
+    // preview to absent the same way the missing-snapshot path does, rather
+    // than ever computing a percentage from a non-finite value.
+    if (!projectedTotal.isFinite || !cap.isFinite) return null;
+
     final isOver = projectedTotal > cap;
-    final pct = (projectedTotal / cap * 100).toStringAsFixed(0);
+    // F3: `toStringAsFixed(0)` ROUNDS — a healthy 99.9999% would display
+    // "100%" while the tone still reads healthy (isOver is computed on the
+    // un-rounded value). Floor while healthy so the display can never claim
+    // 100% without actually reaching/exceeding the cap; once over cap, the
+    // tone already reads alert, so normal rounding is fine.
+    final rawPercentage = projectedTotal / cap * 100;
+    final pct = isOver
+        ? rawPercentage.toStringAsFixed(0)
+        : rawPercentage.floor().toString();
     final toneColor = isOver ? AppColors.expense : AppColors.textSecondary;
 
     return Text(
@@ -295,11 +327,14 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
             DropdownButtonFormField<String>(
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Tipo'),
-              items: const [
-                DropdownMenuItem(value: 'expense', child: Text('Gasto')),
-                DropdownMenuItem(value: 'saving', child: Text('Ahorro')),
-                DropdownMenuItem(value: 'investment', child: Text('Inversión')),
-              ],
+              items: _categoryLabels.entries
+                  .map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _type = v ?? 'expense'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -346,10 +381,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
           onPressed: () => Navigator.of(context).maybePop(),
           child: const Text('Cancelar'),
         ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Guardar'),
-        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Guardar')),
       ],
     );
   }
