@@ -1,5 +1,8 @@
+import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
+import 'package:finanzapp_v2/core/theme/app_typography.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -82,6 +85,40 @@ BudgetFormResult mapBudgetAmounts({
   );
 }
 
+/// Point-in-time, provider-agnostic snapshot used to render the dialog's live
+/// "Presupuestado vs Plan" preview while creating/editing a meta (ADR-3). The
+/// dialog NEVER reads Riverpod providers itself — the caller builds this
+/// plain object from data it already has (or explicitly reads) and injects
+/// it.
+///
+/// [otherAllocatedByType] MUST already exclude the meta currently being
+/// edited (`existing?.id`) — that self-exclusion is the CALLER's
+/// responsibility (spec R11.1), not something this dialog re-derives.
+///
+/// [planCapByType] and [otherAllocatedByType] MUST share the same set of
+/// category keys — a mismatch signals a malformed caller-side snapshot and
+/// is caught in development via [assert].
+class AllocationPreviewData {
+  AllocationPreviewData({
+    required this.planCapByType,
+    required this.otherAllocatedByType,
+  }) : assert(
+         setEquals(
+           planCapByType.keys.toSet(),
+           otherAllocatedByType.keys.toSet(),
+         ),
+         'planCapByType and otherAllocatedByType must have matching category keys',
+       );
+
+  /// Category cap (`income × pct/100`), keyed by `Budget.type`
+  /// (`expense`/`saving`/`investment`).
+  final Map<String, double> planCapByType;
+
+  /// Σ `monthlyQuota` of all OTHER non-archived, same-scope metas per
+  /// category, keyed by `Budget.type`. Excludes the meta being edited, if any.
+  final Map<String, double> otherAllocatedByType;
+}
+
 /// Diálogo compartido (Personal y Hogar) para crear y editar una meta.
 ///
 /// Es AGNÓSTICO del repositorio: recolecta y valida la entrada y, al guardar,
@@ -91,11 +128,18 @@ class BudgetFormDialog extends StatefulWidget {
   const BudgetFormDialog({
     super.key,
     this.existing,
+    this.allocationPreview,
     required this.onSubmit,
   });
 
   /// null => crear; no-null => editar (precarga el formulario).
   final Budget? existing;
+
+  /// Snapshot opcional (ADR-3) para la vista previa "Presupuestado vs Plan".
+  /// null => sin snapshot disponible (loading/error del caller) => la vista
+  /// previa se degrada por completo (no bloquea la apertura del diálogo).
+  final AllocationPreviewData? allocationPreview;
+
   final void Function(BudgetFormResult) onSubmit;
 
   @override
@@ -168,6 +212,104 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     );
   }
 
+  /// Single source of truth for the category dropdown labels, also used by
+  /// the allocation preview.
+  static const Map<String, String> _categoryLabels = {
+    'expense': 'Gasto',
+    'saving': 'Ahorro',
+    'investment': 'Inversión',
+  };
+
+  /// Dropdown items derived once from [_categoryLabels] instead of being
+  /// rebuilt on every `build()` call.
+  static final List<DropdownMenuItem<String>> _categoryItems = _categoryLabels
+      .entries
+      .map(
+        (entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+      )
+      .toList();
+
+  String _categoryLabel(String type) => _categoryLabels[type] ?? 'Gasto';
+
+  /// Live "Presupuestado vs Plan" preview line for the CURRENTLY selected
+  /// category (R10/R11), or `null` when there is nothing to show: no
+  /// snapshot (`allocationPreview == null`, ADR-3 degrade), an unknown
+  /// category key, or the transient goal-type `months < 1` window (ADR-4,
+  /// mirrors the existing "Cuota mensual" hint's own gate).
+  Widget? _buildAllocationPreview(double amount, int months) {
+    final preview = widget.allocationPreview;
+    if (preview == null) return null;
+
+    // Symmetric missing-key handling (R11.1): a missing cap hides the
+    // preview the same way a missing `otherAllocatedByType` entry does —
+    // neither one silently substitutes 0. Either map lacking the current
+    // category now hides the preview the same way.
+    if (!preview.planCapByType.containsKey(_type) ||
+        !preview.otherAllocatedByType.containsKey(_type)) {
+      return null;
+    }
+    final cap = preview.planCapByType[_type]!;
+
+    if (!_isRecurrent && months < 1) return null;
+
+    final projectedQuota = mapBudgetAmounts(
+      name: _nameController.text,
+      type: _type,
+      isRecurrent: _isRecurrent,
+      months: months,
+      amount: amount,
+    ).monthlyQuota;
+
+    final otherAllocated = preview.otherAllocatedByType[_type]!;
+    final projectedTotal = otherAllocated + projectedQuota;
+    final categoryLabel = _categoryLabel(_type);
+
+    // R10.5 never-Infinity guard: the amount TextField has a numeric
+    // keyboard but no `inputFormatters`, so `double.tryParse` accepts
+    // 'Infinity', 'NaN', and overflowing literals like '1e400'. Checked
+    // BEFORE the zero-cap branch below: IEEE NaN-comparison semantics make
+    // every comparison against NaN false, so a non-finite `projectedTotal`
+    // would otherwise silently survive `cap == 0` / `projectedTotal <= 0`
+    // and render a misleading over-cap warning instead of degrading to
+    // absent like the missing-snapshot path does.
+    if (!projectedTotal.isFinite || !cap.isFinite) return null;
+
+    // R10.5/R2.3 zero-cap display guard: NEVER evaluate `.../cap` when
+    // cap == 0 (would render `Infinity` in Dart). Warn via MESSAGE only when
+    // something is actually projected against a plan that grants nothing;
+    // otherwise mirror R2.2 and show nothing.
+    if (cap == 0) {
+      if (projectedTotal <= 0) return null;
+      return Text(
+        'Sin plan asignado a $categoryLabel: esta meta lo supera',
+        style: AppTypography.captionSmall.copyWith(
+          color: AppColors.expense,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    final isOver = projectedTotal > cap;
+    // `toStringAsFixed(0)` ROUNDS — a healthy 99.9999% would display "100%"
+    // while the tone still reads healthy (isOver is computed on the
+    // un-rounded value). Floor while healthy so the display can never claim
+    // 100% without actually reaching/exceeding the cap; once over cap, the
+    // tone already reads alert, so normal rounding is fine.
+    final rawPercentage = projectedTotal / cap * 100;
+    final pct = isOver
+        ? rawPercentage.toStringAsFixed(0)
+        : rawPercentage.floor().toString();
+    final toneColor = isOver ? AppColors.expense : AppColors.textSecondary;
+
+    return Text(
+      '$pct% del plan de $categoryLabel',
+      style: AppTypography.captionSmall.copyWith(
+        color: toneColor,
+        fontWeight: isOver ? FontWeight.w600 : FontWeight.normal,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(
@@ -179,6 +321,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     final amount = double.tryParse(_amountController.text) ?? 0;
     final months = int.tryParse(_monthsController.text) ?? 0;
     final quota = (!_isRecurrent && months >= 1) ? amount / months : 0;
+    final allocationPreview = _buildAllocationPreview(amount, months);
 
     return AlertDialog(
       title: Text(widget.existing == null ? 'Nueva Meta' : 'Editar Meta'),
@@ -195,11 +338,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
             DropdownButtonFormField<String>(
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Tipo'),
-              items: const [
-                DropdownMenuItem(value: 'expense', child: Text('Gasto')),
-                DropdownMenuItem(value: 'saving', child: Text('Ahorro')),
-                DropdownMenuItem(value: 'investment', child: Text('Inversión')),
-              ],
+              items: _categoryItems,
               onChanged: (v) => setState(() => _type = v ?? 'expense'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -234,6 +373,10 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+            if (allocationPreview != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              allocationPreview,
+            ],
           ],
         ),
       ),
@@ -242,10 +385,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
           onPressed: () => Navigator.of(context).maybePop(),
           child: const Text('Cancelar'),
         ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Guardar'),
-        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Guardar')),
       ],
     );
   }
