@@ -772,11 +772,54 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     );
   }
 
+  /// Builds the [AllocationPreviewData] snapshot `_showGoalDialog` injects
+  /// into [BudgetFormDialog] (design ADR-3). `planCapByType` is already
+  /// buildable from the instance's cached pct/income fields (no new read);
+  /// `otherAllocatedByType` is NOT already in scope, so this method
+  /// explicitly `ref.read`s the current `budgetsListProvider(null)` snapshot
+  /// (state already fetched elsewhere, not a new network call) and folds it
+  /// (minus `existing?.id`) per category. Returns `null` when that snapshot
+  /// is still loading or errored (`.valueOrNull == null`) — the dialog must still
+  /// open immediately in that case, with no preview (spec R12.3/R13).
+  AllocationPreviewData? _buildAllocationPreviewData(
+    WidgetRef ref,
+    Budget? existing,
+  ) {
+    // NOTE: `.value` rethrows the underlying error when the AsyncValue is an
+    // AsyncError with no cached previous data — `.valueOrNull` is the
+    // correct null-safe accessor for the loading/error degrade path here.
+    final budgets = ref.read(budgetsListProvider(null)).valueOrNull;
+    if (budgets == null) return null;
+
+    final totalIncome = double.tryParse(_incomeController.text) ?? 0;
+    final planCapByType = <String, double>{
+      'expense': totalIncome * (_pctExpense / 100),
+      'saving': totalIncome * (_pctSavings / 100),
+      'investment': totalIncome * (_pctInvestment / 100),
+    };
+
+    double otherAllocatedOf(String type) => budgets
+        .where((b) => b.type == type && b.id != existing?.id)
+        .fold<double>(0, (sum, b) => sum + b.monthlyQuota);
+    final otherAllocatedByType = <String, double>{
+      'expense': otherAllocatedOf('expense'),
+      'saving': otherAllocatedOf('saving'),
+      'investment': otherAllocatedOf('investment'),
+    };
+
+    return AllocationPreviewData(
+      planCapByType: planCapByType,
+      otherAllocatedByType: otherAllocatedByType,
+    );
+  }
+
   void _showGoalDialog(BuildContext context, WidgetRef ref, Budget? existing) {
+    final allocationPreview = _buildAllocationPreviewData(ref, existing);
     showDialog(
       context: context,
       builder: (ctx) => BudgetFormDialog(
         existing: existing,
+        allocationPreview: allocationPreview,
         onSubmit: (result) async {
           if (existing != null) {
             final updatedBudget = existing.copyWith(
@@ -1005,5 +1048,4 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
       ),
     );
   }
-
 }
