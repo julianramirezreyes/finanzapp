@@ -100,7 +100,7 @@ void main() {
         )).overrideWith(
           (ref) async => fakePersonalConfig(personalIncome: 1000000),
         ),
-        // Errors -> budgetsListProvider(null).value stays null, exercising
+        // Errors -> budgetsListProvider(null).valueOrNull stays null, exercising
         // the loading/error fallback (ADR-3). An error (rather than a
         // perpetually-loading future) keeps both tabs' `error:` branches
         // static (no CircularProgressIndicator animation), so
