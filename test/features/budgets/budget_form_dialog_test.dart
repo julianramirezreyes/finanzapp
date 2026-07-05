@@ -264,10 +264,10 @@ void main() {
     });
   });
 
-  group('Allocation preview (PR3, R10-R13)', () {
+  group('Allocation preview (R10-R13)', () {
     // Fixture snapshot: expense/saving/investment caps and OTHER (non-edited)
-    // metas' allocated sums per category — mirrors the plain, provider-agnostic
-    // shape `_showGoalDialog` (PR4) will inject (ADR-3).
+    // metas' allocated sums per category — mirrors the plain,
+    // provider-agnostic snapshot shape the tab call sites inject (ADR-3).
     final snapshot = AllocationPreviewData(
       planCapByType: {
         'expense': 500000,
@@ -525,7 +525,7 @@ void main() {
     );
 
     testWidgets(
-      'P12 — non-finite amount (overflowing literal) hides the preview without rendering "Infinity"/"NaN", save stays ungated (F1/F6a)',
+      'P12 — non-finite amount (overflowing literal) hides the preview without rendering "Infinity"/"NaN", save stays ungated (R10.5)',
       (tester) async {
         final results = await _pumpDialog(tester, allocationPreview: snapshot);
 
@@ -548,7 +548,7 @@ void main() {
     );
 
     testWidgets(
-      'P13 — projected total exactly at the cap boundary stays healthy, not alert (R5.2, F3)',
+      'P13 — projected total exactly at the cap boundary stays healthy, not alert (R5.2)',
       (tester) async {
         await _pumpDialog(tester, allocationPreview: snapshot);
 
@@ -565,7 +565,7 @@ void main() {
     );
 
     testWidgets(
-      'P14 — reverse category switch mid-edit (goal-type meta back to expense) rebases correctly (F6c)',
+      'P14 — reverse category switch mid-edit (goal-type meta back to expense) rebases correctly (R11.2)',
       (tester) async {
         final existing = Budget(
           id: 'edit3',
@@ -596,5 +596,64 @@ void main() {
         expect(find.textContaining('50% del plan de Ahorro'), findsNothing);
       },
     );
+
+    testWidgets(
+      'P15 — zero-cap category with a non-finite amount hides the preview entirely (R10.5 guard ordering)',
+      (tester) async {
+        await _pumpDialog(tester, allocationPreview: zeroCapSnapshot);
+
+        await _selectType(tester, 'Ahorro');
+        await _enterByLabel(tester, 'Nombre', 'Fondo');
+
+        // cap(saving)=0. Without the finiteness guard running BEFORE the
+        // zero-cap branch, IEEE NaN-comparison semantics (every comparison
+        // against NaN/Infinity math results is false) would make
+        // `projectedTotal <= 0` evaluate false here and render the
+        // "Sin plan asignado" over-cap warning for garbage input.
+        await _enterByLabel(tester, 'Monto mensual', '1e400');
+        expect(find.textContaining('Infinity'), findsNothing);
+        expect(find.textContaining('NaN'), findsNothing);
+        expect(find.textContaining('%'), findsNothing);
+        expect(find.textContaining('Sin plan asignado'), findsNothing);
+
+        // 'NaN' entered here is echoed verbatim by the TextField itself, so
+        // this block only asserts the PREVIEW stays absent (no percentage,
+        // no warning message) — not a global "no NaN text" check.
+        await _enterByLabel(tester, 'Monto mensual', 'NaN');
+        expect(find.textContaining('%'), findsNothing);
+        expect(find.textContaining('Sin plan asignado'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'P16 — fractional near-cap healthy value floors to 99%, not rounds to 100% (R5.2)',
+      (tester) async {
+        await _pumpDialog(tester, allocationPreview: snapshot);
+
+        await _enterByLabel(tester, 'Nombre', 'Renta');
+        // otherAllocated(expense)=100000 + projected 399999 = 499999 / 500000
+        // = 99.9998% — a value where round() would display "100%" but the
+        // meta has NOT actually reached the cap, so floor() must show "99%".
+        await _enterByLabel(tester, 'Monto mensual', '399999');
+
+        final text = tester.widget<Text>(
+          find.textContaining('99% del plan de Gasto'),
+        );
+        expect(text.style?.color, AppColors.textSecondary);
+        expect(text.style?.fontWeight, FontWeight.normal);
+        expect(find.textContaining('100% del plan de Gasto'), findsNothing);
+      },
+    );
+
+    test('AllocationPreviewData throws an AssertionError when planCapByType '
+        'and otherAllocatedByType keys mismatch (R11.1)', () {
+      expect(
+        () => AllocationPreviewData(
+          planCapByType: {'expense': 500000, 'saving': 300000},
+          otherAllocatedByType: {'expense': 100000},
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
   });
 }

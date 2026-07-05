@@ -213,13 +213,21 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
   }
 
   /// Single source of truth for the category dropdown labels, also used by
-  /// the allocation preview (F5: previously duplicated as a hardcoded
-  /// `DropdownMenuItem` list).
+  /// the allocation preview.
   static const Map<String, String> _categoryLabels = {
     'expense': 'Gasto',
     'saving': 'Ahorro',
     'investment': 'Inversión',
   };
+
+  /// Dropdown items derived once from [_categoryLabels] instead of being
+  /// rebuilt on every `build()` call.
+  static final List<DropdownMenuItem<String>> _categoryItems = _categoryLabels
+      .entries
+      .map(
+        (entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+      )
+      .toList();
 
   String _categoryLabel(String type) => _categoryLabels[type] ?? 'Gasto';
 
@@ -232,10 +240,10 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     final preview = widget.allocationPreview;
     if (preview == null) return null;
 
-    // F2: symmetric missing-key handling — a missing cap used to hide the
-    // preview while a missing `otherAllocatedByType` entry silently
-    // substituted 0. Either map lacking the current category now hides the
-    // preview the same way.
+    // Symmetric missing-key handling (R11.1): a missing cap hides the
+    // preview the same way a missing `otherAllocatedByType` entry does —
+    // neither one silently substitutes 0. Either map lacking the current
+    // category now hides the preview the same way.
     if (!preview.planCapByType.containsKey(_type) ||
         !preview.otherAllocatedByType.containsKey(_type)) {
       return null;
@@ -256,6 +264,16 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
     final projectedTotal = otherAllocated + projectedQuota;
     final categoryLabel = _categoryLabel(_type);
 
+    // R10.5 never-Infinity guard: the amount TextField has a numeric
+    // keyboard but no `inputFormatters`, so `double.tryParse` accepts
+    // 'Infinity', 'NaN', and overflowing literals like '1e400'. Checked
+    // BEFORE the zero-cap branch below: IEEE NaN-comparison semantics make
+    // every comparison against NaN false, so a non-finite `projectedTotal`
+    // would otherwise silently survive `cap == 0` / `projectedTotal <= 0`
+    // and render a misleading over-cap warning instead of degrading to
+    // absent like the missing-snapshot path does.
+    if (!projectedTotal.isFinite || !cap.isFinite) return null;
+
     // R10.5/R2.3 zero-cap display guard: NEVER evaluate `.../cap` when
     // cap == 0 (would render `Infinity` in Dart). Warn via MESSAGE only when
     // something is actually projected against a plan that grants nothing;
@@ -271,16 +289,9 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
       );
     }
 
-    // R10.5 never-Infinity guard: the amount TextField has a numeric
-    // keyboard but no `inputFormatters`, so `double.tryParse` accepts
-    // 'Infinity', 'NaN', and overflowing literals like '1e400'. Degrade the
-    // preview to absent the same way the missing-snapshot path does, rather
-    // than ever computing a percentage from a non-finite value.
-    if (!projectedTotal.isFinite || !cap.isFinite) return null;
-
     final isOver = projectedTotal > cap;
-    // F3: `toStringAsFixed(0)` ROUNDS — a healthy 99.9999% would display
-    // "100%" while the tone still reads healthy (isOver is computed on the
+    // `toStringAsFixed(0)` ROUNDS — a healthy 99.9999% would display "100%"
+    // while the tone still reads healthy (isOver is computed on the
     // un-rounded value). Floor while healthy so the display can never claim
     // 100% without actually reaching/exceeding the cap; once over cap, the
     // tone already reads alert, so normal rounding is fine.
@@ -327,14 +338,7 @@ class _BudgetFormDialogState extends State<BudgetFormDialog> {
             DropdownButtonFormField<String>(
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Tipo'),
-              items: _categoryLabels.entries
-                  .map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
+              items: _categoryItems,
               onChanged: (v) => setState(() => _type = v ?? 'expense'),
             ),
             const SizedBox(height: AppSpacing.md),
