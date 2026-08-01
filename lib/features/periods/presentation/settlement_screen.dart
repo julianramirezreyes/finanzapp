@@ -10,6 +10,7 @@ import 'package:finanzapp_v2/core/theme/app_colors.dart';
 import 'package:finanzapp_v2/core/theme/app_spacing.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/app_card.dart';
 import 'package:finanzapp_v2/shared/ui/widgets/loading_indicator.dart';
+import 'package:finanzapp_v2/features/periods/presentation/settlement_presentation.dart';
 
 class SettlementScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -80,8 +81,14 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
       ),
       body: settlementAsync.when(
         data: (settlement) {
-          final amIDebtor = settlement.debtorId == userId;
-          final amICreditor = settlement.creditorId == userId;
+          final direction = settlementDirection(
+            balance: settlement.balance,
+            debtorId: settlement.debtorId,
+            creditorId: settlement.creditorId,
+            currentUserId: userId,
+          );
+          final amIDebtor = direction == SettlementDirection.debtor;
+          final amICreditor = direction == SettlementDirection.creditor;
 
           String message = "¡Todo a paz y salvo!";
           Color color = AppColors.textSecondary;
@@ -181,7 +188,11 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                       const Divider(height: AppSpacing.xl),
                       _buildDetailRow(
                         context,
-                        'Tu Parte (50%)',
+                        contributionLabel(
+                          'Tu Parte',
+                          settlement.shareA,
+                          settlement.totalAmount,
+                        ),
                         currency.format(settlement.shareA),
                         Icons.calculate,
                         AppColors.savings,
@@ -189,7 +200,11 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                       const Divider(height: AppSpacing.xl),
                       _buildDetailRow(
                         context,
-                        'Parte de tu Pareja (50%)',
+                        contributionLabel(
+                          'Parte de tu Pareja',
+                          settlement.shareB,
+                          settlement.totalAmount,
+                        ),
                         currency.format(settlement.shareB),
                         Icons.calculate_outlined,
                         AppColors.investment,

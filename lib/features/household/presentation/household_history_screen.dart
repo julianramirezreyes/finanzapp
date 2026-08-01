@@ -7,6 +7,7 @@ import 'package:finanzapp_v2/features/household/data/household_snapshot_reposito
 import 'package:finanzapp_v2/features/household/domain/household.dart';
 import 'package:finanzapp_v2/features/household/domain/household_snapshot.dart';
 import 'package:finanzapp_v2/features/periods/data/period_repository.dart';
+import 'package:finanzapp_v2/features/periods/domain/period.dart';
 import 'package:finanzapp_v2/features/budgets/data/budget_config_provider.dart';
 import 'package:finanzapp_v2/features/budgets/data/budget_config_repository.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget_config.dart';
@@ -26,6 +27,29 @@ final householdSnapshotProvider = FutureProvider.family
           .watch(householdSnapshotRepositoryProvider)
           .getSnapshot(params.householdId, params.year, params.month);
     });
+
+Future<void> refreshSettlementAfterSnapshotMutation({
+  required Future<List<Period>> Function() loadPeriods,
+  required DateTime selectedDate,
+  required Future<void> Function() mutation,
+  required void Function(SettlementKey key) invalidateSettlement,
+}) async {
+  await mutation();
+  final periods = await loadPeriods();
+  final period = periods
+      .where(
+        (period) =>
+            period.year == selectedDate.year &&
+            period.month == selectedDate.month,
+      )
+      .firstOrNull;
+  if (period != null) {
+    invalidateSettlement((
+      householdId: period.householdId,
+      periodId: period.id,
+    ));
+  }
+}
 
 class HouseholdHistoryScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -59,13 +83,20 @@ class _HouseholdHistoryScreenState
 
   Future<void> _syncSnapshot() async {
     try {
-      await ref
-          .read(householdSnapshotRepositoryProvider)
-          .syncSnapshot(
-            widget.household.id,
-            _selectedDate.year,
-            _selectedDate.month,
-          );
+      await refreshSettlementAfterSnapshotMutation(
+        loadPeriods: () =>
+            ref.read(periodsListProvider(widget.household.id).future),
+        selectedDate: _selectedDate,
+        mutation: () => ref
+            .read(householdSnapshotRepositoryProvider)
+            .syncSnapshot(
+              widget.household.id,
+              _selectedDate.year,
+              _selectedDate.month,
+            )
+            .then((_) {}),
+        invalidateSettlement: (key) => ref.invalidate(settlementProvider(key)),
+      );
       ref.invalidate(householdSnapshotProvider);
       ref.invalidate(periodsListProvider(widget.household.id));
       if (mounted) {
@@ -109,13 +140,19 @@ class _HouseholdHistoryScreenState
     if (confirm != true) return;
 
     try {
-      await ref
-          .read(householdSnapshotRepositoryProvider)
-          .clearSnapshot(
-            widget.household.id,
-            _selectedDate.year,
-            _selectedDate.month,
-          );
+      await refreshSettlementAfterSnapshotMutation(
+        loadPeriods: () =>
+            ref.read(periodsListProvider(widget.household.id).future),
+        selectedDate: _selectedDate,
+        mutation: () => ref
+            .read(householdSnapshotRepositoryProvider)
+            .clearSnapshot(
+              widget.household.id,
+              _selectedDate.year,
+              _selectedDate.month,
+            ),
+        invalidateSettlement: (key) => ref.invalidate(settlementProvider(key)),
+      );
 
       ref.invalidate(householdSnapshotProvider);
       ref.invalidate(periodsListProvider(widget.household.id));
@@ -237,9 +274,20 @@ class _HouseholdHistoryScreenState
 
     try {
       final newAmount = double.tryParse(amountController.text) ?? item.amount;
-      await ref
-          .read(householdSnapshotRepositoryProvider)
-          .updateItem(item.id, newAmount, descController.text, item.isExcluded);
+      await refreshSettlementAfterSnapshotMutation(
+        loadPeriods: () =>
+            ref.read(periodsListProvider(widget.household.id).future),
+        selectedDate: _selectedDate,
+        mutation: () => ref
+            .read(householdSnapshotRepositoryProvider)
+            .updateItem(
+              item.id,
+              newAmount,
+              descController.text,
+              item.isExcluded,
+            ),
+        invalidateSettlement: (key) => ref.invalidate(settlementProvider(key)),
+      );
       ref.invalidate(householdSnapshotProvider);
     } catch (e) {
       if (mounted) {
@@ -278,7 +326,14 @@ class _HouseholdHistoryScreenState
     if (confirm != true) return;
 
     try {
-      await ref.read(householdSnapshotRepositoryProvider).deleteItem(itemId);
+      await refreshSettlementAfterSnapshotMutation(
+        loadPeriods: () =>
+            ref.read(periodsListProvider(widget.household.id).future),
+        selectedDate: _selectedDate,
+        mutation: () =>
+            ref.read(householdSnapshotRepositoryProvider).deleteItem(itemId),
+        invalidateSettlement: (key) => ref.invalidate(settlementProvider(key)),
+      );
       ref.invalidate(householdSnapshotProvider);
     } catch (e) {
       if (mounted) {
@@ -309,7 +364,14 @@ class _HouseholdHistoryScreenState
   Future<void> _updateConfig(BudgetConfig newConfig) async {
     try {
       if (!mounted) return;
-      await ref.read(budgetConfigRepositoryProvider).upsertConfig(newConfig);
+      await refreshSettlementAfterSnapshotMutation(
+        loadPeriods: () =>
+            ref.read(periodsListProvider(widget.household.id).future),
+        selectedDate: _selectedDate,
+        mutation: () =>
+            ref.read(budgetConfigRepositoryProvider).upsertConfig(newConfig),
+        invalidateSettlement: (key) => ref.invalidate(settlementProvider(key)),
+      );
 
       ref.invalidate(
         budgetConfigProvider((
@@ -318,7 +380,6 @@ class _HouseholdHistoryScreenState
         )),
       );
       ref.invalidate(periodsListProvider(widget.household.id));
-      ref.invalidate(settlementProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
