@@ -897,8 +897,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.12.2",
+  "generatorVersion": "3.12.1",
   "flutterRoot": "file:///home/julian/development/flutter",
-  "flutterVersion": "3.44.4",
+  "flutterVersion": "3.44.1",
   "pubCache": "file:///home/julian/.pub-cache"
 }
