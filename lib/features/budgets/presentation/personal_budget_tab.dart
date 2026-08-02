@@ -13,6 +13,7 @@ import 'package:finanzapp_v2/features/budgets/presentation/budget_allocation.dar
 import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/reorder_budgets_action.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
@@ -33,6 +34,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   double _pctSavings = 30;
   double _pctInvestment = 20;
   bool _isInit = false;
+  List<Budget>? _orderedBudgets;
 
   @override
   void dispose() {
@@ -741,9 +743,24 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
               );
             }
-            return Column(
-              children: budgets.map((b) {
+            final displayedBudgets = _orderedBudgets ?? budgets;
+            return ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              onReorder: (oldIndex, newIndex) => reorderBudgetsAction(
+                ref: ref,
+                context: context,
+                budgets: displayedBudgets,
+                oldIndex: oldIndex,
+                newIndex: newIndex,
+                onOptimisticOrder: (reordered) =>
+                    setState(() => _orderedBudgets = reordered),
+                onRollback: (snapshot) =>
+                    setState(() => _orderedBudgets = snapshot),
+              ),
+              children: displayedBudgets.map((b) {
                 return Padding(
+                  key: ValueKey('personal-budget-${b.id}'),
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: BudgetCard(
                     budget: b,

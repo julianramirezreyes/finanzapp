@@ -57,14 +57,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _destinationAccountId = t.destinationAccountId;
       _excludeFromBalance = t.excludeFromBalance;
       _paidWithCreditCard = t.paidWithCreditCard;
+      _creditCardAccountId = t.vaultCardId;
+      _installments = t.installments ?? 1;
+      _payingCreditCard = _isCanonicalCardPayment(t);
 
-      if (t.budgetId != null) {
+      if (_payingCreditCard) {
+        _selectionValue = 'static:GastoGeneral';
+      } else if (t.budgetId != null) {
         _selectionValue = "budget:${t.budgetId}";
       } else {
         _selectionValue = "static:${t.category}";
       }
     }
   }
+
+  bool _isCanonicalCardPayment(Transaction transaction) =>
+      transaction.type == 'expense' &&
+      transaction.category == 'Pago Tarjeta' &&
+      !transaction.paidWithCreditCard &&
+      transaction.vaultCardId != null;
 
   @override
   Widget build(BuildContext context) {
@@ -313,8 +324,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             hintText: _type == 'income'
                 ? '¿De dónde viene el ingreso?'
                 : _type == 'transfer'
-                    ? 'Concepto de la transferencia'
-                    : '¿Qué gastaste?',
+                ? 'Concepto de la transferencia'
+                : '¿Qué gastaste?',
             filled: true,
             fillColor: context.surface,
             border: OutlineInputBorder(
@@ -459,6 +470,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Widget _buildCategorySelector(WidgetRef ref) {
+    if (_payingCreditCard) {
+      return _buildCanonicalPaymentCategory();
+    }
     final householdAsync = ref.watch(householdProvider);
     final String? currentHouseholdId = householdAsync.valueOrNull?.id;
     final String? targetHouseholdId = _context == 'household'
@@ -602,9 +616,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   isExpanded: true,
                   isDense: true,
                   items: items,
-                  onChanged: _paidWithCreditCard || _creditCardAccountId != null
-                      ? null
-                      : (v) => setState(() => _selectionValue = v),
+                  onChanged: (v) => setState(() => _selectionValue = v),
                 ),
               ),
             ),
@@ -613,6 +625,47 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       },
       loading: () => const Center(child: LinearProgressIndicator()),
       error: (e, s) => Text("Error cargando categorías: $e"),
+    );
+  }
+
+  Widget _buildCanonicalPaymentCategory() {
+    return Semantics(
+      container: true,
+      label: 'Pago de tarjeta: las compras ya consumen sus metas',
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: context.stateFill(AppColors.warning),
+          borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+          border: Border.all(color: AppColors.warning),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gasto General',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppColors.warning,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Esta selección no consume una meta.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Las compras con tarjeta ya consumen sus metas; asignar este pago duplicaría el gasto.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -911,6 +964,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     if (_payingCreditCard) {
                       _paidWithCreditCard = false;
                       _excludeFromBalance = false;
+                      _selectionValue = 'static:GastoGeneral';
                       if (filteredCreditCards.isNotEmpty) {
                         _creditCardAccountId =
                             filteredCreditCards.first['id'] as String?;
@@ -938,9 +992,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     : AppColors.backgroundLight,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
                 border: Border.all(
-                  color: isDark
-                      ? AppColors.borderDark
-                      : AppColors.borderLight,
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
                 ),
               ),
               child: DropdownButtonHideUnderline(
@@ -1043,7 +1095,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         _creditCardAccountId =
                             filteredCreditCards.first['id'] as String?;
                       }
-                      _selectionValue = 'static:Gasto general';
                     } else {
                       _creditCardAccountId = null;
                       _selectionValue = null;
@@ -1068,9 +1119,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     : AppColors.backgroundLight,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
                 border: Border.all(
-                  color: isDark
-                      ? AppColors.borderDark
-                      : AppColors.borderLight,
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
                 ),
               ),
               child: DropdownButtonHideUnderline(
@@ -1126,7 +1175,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ],
             ),
           ],
-          _creditCardStatusFooter(filteredCreditCardsAsync, _paidWithCreditCard),
+          _creditCardStatusFooter(
+            filteredCreditCardsAsync,
+            _paidWithCreditCard,
+          ),
         ],
       ),
     );
@@ -1311,29 +1363,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         if (widget.transactionToEdit != null) {
           final t = widget.transactionToEdit!;
 
+          final isCanonicalPayment = _isCanonicalCardPayment(t);
           final toUpdate = Transaction(
             id: t.id,
             accountId: _accountId!,
             amount: _amount,
             type: _type,
-            category: finalCategory,
+            category: isCanonicalPayment ? t.category : finalCategory,
             description: _description,
             date: _date,
-            context: _context,
-            householdId: finalHouseholdId,
-            budgetId: finalBudgetId,
+            context: isCanonicalPayment ? t.context : _context,
+            householdId: isCanonicalPayment ? t.householdId : finalHouseholdId,
+            budgetId: isCanonicalPayment ? null : finalBudgetId,
             destinationAccountId: _destinationAccountId,
             pocketId: _pocketId,
             userId: t.userId,
             excludeFromBalance: _excludeFromBalance,
-            paidWithCreditCard: _type == 'expense'
+            paidWithCreditCard: isCanonicalPayment
+                ? false
+                : _type == 'expense'
                 ? _paidWithCreditCard
                 : false,
             creditCardAccountId: null,
-            vaultCardId: _type == 'expense' && _paidWithCreditCard
+            vaultCardId: isCanonicalPayment
+                ? t.vaultCardId
+                : _type == 'expense' && _paidWithCreditCard
                 ? _creditCardAccountId
                 : null,
-            installments: _paidWithCreditCard ? _installments : 1,
+            installments: isCanonicalPayment
+                ? 1
+                : _paidWithCreditCard
+                ? _installments
+                : 1,
           );
 
           await ref
