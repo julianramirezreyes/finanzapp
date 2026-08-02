@@ -28,13 +28,18 @@ class PersonalBudgetTab extends ConsumerStatefulWidget {
   ConsumerState<PersonalBudgetTab> createState() => _PersonalBudgetTabState();
 }
 
+enum _ReorderPhase { idle, saving }
+
 class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
   final _incomeController = TextEditingController();
   double _pctExpense = 50;
   double _pctSavings = 30;
   double _pctInvestment = 20;
   bool _isInit = false;
-  List<Budget>? _orderedBudgets;
+  List<Budget>? _confirmedBudgets;
+  List<String>? _optimisticOrderIds;
+  _ReorderPhase _reorderPhase = _ReorderPhase.idle;
+  int _reorderGeneration = 0;
 
   @override
   void dispose() {
@@ -49,6 +54,101 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     _pctSavings = config.pctSavings.toDouble();
     _pctInvestment = config.pctInvestment.toDouble();
     _isInit = true;
+  }
+
+  bool get _isReordering => _reorderPhase != _ReorderPhase.idle;
+
+  List<Budget> _visibleBudgets(List<Budget> canonicalBudgets) {
+    _confirmedBudgets = List<Budget>.unmodifiable(canonicalBudgets);
+    final optimisticOrderIds = _optimisticOrderIds;
+    if (optimisticOrderIds == null) return canonicalBudgets;
+
+    final budgetsById = {
+      for (final budget in canonicalBudgets) budget.id: budget,
+    };
+    final rebased = optimisticOrderIds
+        .map((budgetId) => budgetsById[budgetId])
+        .whereType<Budget>()
+        .toList(growable: false);
+    if (rebased.length != canonicalBudgets.length) {
+      _optimisticOrderIds = null;
+      return canonicalBudgets;
+    }
+    return rebased;
+  }
+
+  void _acceptCanonicalBudgets(List<Budget> budgets) {
+    if (!mounted) return;
+    setState(() {
+      _confirmedBudgets = List<Budget>.unmodifiable(budgets);
+      if (!_isReordering) _optimisticOrderIds = null;
+    });
+  }
+
+  Future<List<Budget>> _refreshCanonicalBudgets() async {
+    ref.invalidate(budgetsListProvider(null));
+    return ref.read(budgetsListProvider(null).future);
+  }
+
+  void _startReorder({
+    required List<Budget> visibleBudgets,
+    required int oldIndex,
+    required int newIndex,
+  }) {
+    if (_isReordering) return;
+    final intent = BudgetReorderIntent.tryFromDrag(
+      budgets: visibleBudgets,
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+    );
+    final optimistic = intent?.applyTo(visibleBudgets);
+    if (intent == null || optimistic == null) return;
+
+    final generation = ++_reorderGeneration;
+    setState(() {
+      _reorderPhase = _ReorderPhase.saving;
+      _optimisticOrderIds = optimistic
+          .map((budget) => budget.id)
+          .toList(growable: false);
+    });
+    _persistReorder(
+      generation: generation,
+      budgets: visibleBudgets,
+      intent: intent,
+    );
+  }
+
+  Future<void> _persistReorder({
+    required int generation,
+    required List<Budget> budgets,
+    required BudgetReorderIntent intent,
+  }) async {
+    final result = await executeBudgetReorder(
+      repository: ref.read(budgetRepositoryProvider),
+      budgets: budgets,
+      intent: intent,
+      refreshCanonical: _refreshCanonicalBudgets,
+    );
+    if (!mounted || generation != _reorderGeneration) return;
+
+    setState(() {
+      _reorderPhase = _ReorderPhase.idle;
+      _optimisticOrderIds = null;
+      if (result.isSuccess) {
+        _confirmedBudgets = List<Budget>.unmodifiable(result.budgets);
+      }
+    });
+    if (result.isSuccess || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.isConflict
+              ? 'La lista cambió. Actualiza e intenta reordenar de nuevo.'
+              : 'No se pudo guardar el orden. Intenta nuevamente.',
+        ),
+      ),
+    );
   }
 
   Future<void> _saveConfig() async {
@@ -696,6 +796,9 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
 
   Widget _buildBudgetsSection(BuildContext context, WidgetRef ref) {
     final budgetsAsync = ref.watch(budgetsListProvider(null));
+    ref.listen<AsyncValue<List<Budget>>>(budgetsListProvider(null), (_, next) {
+      next.whenData(_acceptCanonicalBudgets);
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,43 +846,55 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
                 ),
               );
             }
-            final displayedBudgets = _orderedBudgets ?? budgets;
-            return ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              onReorder: (oldIndex, newIndex) => reorderBudgetsAction(
-                ref: ref,
-                context: context,
-                budgets: displayedBudgets,
-                oldIndex: oldIndex,
-                newIndex: newIndex,
-                onOptimisticOrder: (reordered) =>
-                    setState(() => _orderedBudgets = reordered),
-                onRollback: (snapshot) =>
-                    setState(() => _orderedBudgets = snapshot),
-              ),
-              children: displayedBudgets.map((b) {
-                return Padding(
-                  key: ValueKey('personal-budget-${b.id}'),
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: BudgetCard(
-                    budget: b,
-                    currentAmount: b.currentAmount,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BudgetHistoryScreen(budget: b),
-                      ),
-                    ),
-                    onEdit: () => _showGoalDialog(context, ref, b),
-                    onDelete: () => confirmDeleteBudget(
-                      context,
-                      ref,
-                      b,
-                      invalidateTarget: budgetsListProvider(null),
+            final displayedBudgets = _visibleBudgets(budgets);
+            return Column(
+              children: [
+                if (_isReordering) ...[
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Guardando orden...',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                IgnorePointer(
+                  ignoring: _isReordering,
+                  child: ReorderableListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onReorder: (oldIndex, newIndex) => _startReorder(
+                      visibleBudgets: displayedBudgets,
+                      oldIndex: oldIndex,
+                      newIndex: newIndex,
+                    ),
+                    children: displayedBudgets.map((b) {
+                      return Padding(
+                        key: ValueKey('personal-budget-${b.id}'),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: BudgetCard(
+                          budget: b,
+                          currentAmount: b.currentAmount,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BudgetHistoryScreen(budget: b),
+                            ),
+                          ),
+                          onEdit: () => _showGoalDialog(context, ref, b),
+                          onDelete: () => confirmDeleteBudget(
+                            context,
+                            ref,
+                            b,
+                            invalidateTarget: budgetsListProvider(null),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),

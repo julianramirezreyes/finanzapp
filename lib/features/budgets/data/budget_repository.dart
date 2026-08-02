@@ -7,6 +7,20 @@ final budgetRepositoryProvider = Provider<BudgetRepository>((ref) {
   return BudgetRepository(ref.watch(dioProvider));
 });
 
+/// Preserves the HTTP contract that a caller needs to make a safe retry choice.
+class BudgetRepositoryFailure implements Exception {
+  BudgetRepositoryFailure({this.statusCode, this.responseBody, this.cause});
+
+  final int? statusCode;
+  final dynamic responseBody;
+  final Object? cause;
+
+  bool get isConflict => statusCode == 409;
+
+  @override
+  String toString() => 'BudgetRepositoryFailure(statusCode: $statusCode)';
+}
+
 class BudgetRepository {
   final Dio _dio;
 
@@ -107,8 +121,14 @@ class BudgetRepository {
           .toList();
 
       await _dio.post('/budgets/reorder', data: items);
-    } catch (e) {
-      throw Exception('Failed to reorder budgets: $e');
+    } on DioException catch (error) {
+      throw BudgetRepositoryFailure(
+        statusCode: error.response?.statusCode,
+        responseBody: error.response?.data,
+        cause: error,
+      );
+    } catch (error) {
+      throw BudgetRepositoryFailure(cause: error);
     }
   }
 }
