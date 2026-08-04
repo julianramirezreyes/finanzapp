@@ -79,6 +79,7 @@ class BudgetReorderResult {
 }
 
 typedef RefreshCanonicalBudgets = Future<List<Budget>> Function();
+typedef PersistBudgetReorder = Future<void> Function(List<Budget> budgets);
 
 /// Persists one reorder attempt and performs a single, conflict-only recovery.
 ///
@@ -89,15 +90,17 @@ Future<BudgetReorderResult> executeBudgetReorder({
   required List<Budget> budgets,
   required BudgetReorderIntent intent,
   required RefreshCanonicalBudgets refreshCanonical,
+  PersistBudgetReorder? persistReorder,
 }) async {
   final initial = List<Budget>.unmodifiable(budgets);
+  final persist = persistReorder ?? repository.reorderBudgets;
   final optimistic = intent.applyTo(initial);
   if (optimistic == null) {
     return BudgetReorderResult.failure(initial, isConflict: false);
   }
 
   try {
-    await repository.reorderBudgets(optimistic);
+    await persist(optimistic);
     return BudgetReorderResult.success(
       List<Budget>.unmodifiable(await refreshCanonical()),
     );
@@ -118,7 +121,7 @@ Future<BudgetReorderResult> executeBudgetReorder({
     }
 
     try {
-      await repository.reorderBudgets(retry);
+      await persist(retry);
       return BudgetReorderResult.success(
         List<Budget>.unmodifiable(await refreshCanonical()),
       );

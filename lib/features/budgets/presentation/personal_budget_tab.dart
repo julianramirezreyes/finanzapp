@@ -96,6 +96,8 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     required int newIndex,
   }) {
     if (_isReordering) return;
+    final confirmedBudgets =
+        _confirmedBudgets ?? List<Budget>.unmodifiable(visibleBudgets);
     final intent = BudgetReorderIntent.tryFromDrag(
       budgets: visibleBudgets,
       oldIndex: oldIndex,
@@ -113,7 +115,7 @@ class _PersonalBudgetTabState extends ConsumerState<PersonalBudgetTab> {
     });
     _persistReorder(
       generation: generation,
-      budgets: visibleBudgets,
+      budgets: confirmedBudgets,
       intent: intent,
     );
   }

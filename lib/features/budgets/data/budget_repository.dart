@@ -106,7 +106,10 @@ class BudgetRepository {
     }
   }
 
-  Future<void> reorderBudgets(List<Budget> budgets) async {
+  Future<void> reorderBudgets(
+    List<Budget> budgets, {
+    String? householdId,
+  }) async {
     try {
       final items = budgets
           .asMap()
@@ -120,7 +123,13 @@ class BudgetRepository {
           )
           .toList();
 
-      await _dio.post('/budgets/reorder', data: items);
+      await _dio.post(
+        '/budgets/reorder',
+        queryParameters: householdId == null
+            ? null
+            : {'household_id': householdId},
+        data: items,
+      );
     } on DioException catch (error) {
       throw BudgetRepositoryFailure(
         statusCode: error.response?.statusCode,

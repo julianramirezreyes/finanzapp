@@ -13,6 +13,7 @@ import 'package:finanzapp_v2/features/budgets/presentation/budget_allocation.dar
 import 'package:finanzapp_v2/features/budgets/presentation/budget_consumption.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/budget_history_screen.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/helpers/confirm_delete_budget.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/reorder_budgets_action.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:intl/intl.dart';
 import 'package:finanzapp_v2/core/theme/app_colors.dart';
@@ -27,6 +28,8 @@ class HouseholdBudgetTab extends ConsumerStatefulWidget {
   ConsumerState<HouseholdBudgetTab> createState() => _HouseholdBudgetTabState();
 }
 
+enum _HouseholdReorderPhase { idle, saving }
+
 class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
   final _incomeAController = TextEditingController();
   final _incomeBController = TextEditingController();
@@ -34,6 +37,110 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
   double _pctSavings = 30;
   double _pctInvestment = 20;
   bool _isInit = false;
+  List<Budget>? _confirmedBudgets;
+  List<String>? _optimisticOrderIds;
+  _HouseholdReorderPhase _reorderPhase = _HouseholdReorderPhase.idle;
+  int _reorderGeneration = 0;
+
+  bool get _isReordering => _reorderPhase != _HouseholdReorderPhase.idle;
+
+  List<Budget> _visibleBudgets(List<Budget> canonicalBudgets) {
+    _confirmedBudgets = List<Budget>.unmodifiable(canonicalBudgets);
+    final optimisticOrderIds = _optimisticOrderIds;
+    if (optimisticOrderIds == null) return canonicalBudgets;
+    final budgetsById = {
+      for (final budget in canonicalBudgets) budget.id: budget,
+    };
+    final rebased = optimisticOrderIds
+        .map((budgetId) => budgetsById[budgetId])
+        .whereType<Budget>()
+        .toList(growable: false);
+    if (rebased.length != canonicalBudgets.length) {
+      _optimisticOrderIds = null;
+      return canonicalBudgets;
+    }
+    return rebased;
+  }
+
+  void _acceptCanonicalBudgets(List<Budget> budgets) {
+    if (!mounted) return;
+    setState(() {
+      _confirmedBudgets = List<Budget>.unmodifiable(budgets);
+      if (!_isReordering) _optimisticOrderIds = null;
+    });
+  }
+
+  Future<List<Budget>> _refreshCanonicalBudgets(String householdId) async {
+    final target = budgetsListProvider(householdId);
+    ref.invalidate(target);
+    return ref.read(target.future);
+  }
+
+  void _startReorder({
+    required String householdId,
+    required List<Budget> visibleBudgets,
+    required int oldIndex,
+    required int newIndex,
+  }) {
+    if (_isReordering) return;
+    final confirmedBudgets =
+        _confirmedBudgets ?? List<Budget>.unmodifiable(visibleBudgets);
+    final intent = BudgetReorderIntent.tryFromDrag(
+      budgets: visibleBudgets,
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+    );
+    final optimistic = intent?.applyTo(visibleBudgets);
+    if (intent == null || optimistic == null) return;
+    final generation = ++_reorderGeneration;
+    setState(() {
+      _reorderPhase = _HouseholdReorderPhase.saving;
+      _optimisticOrderIds = optimistic
+          .map((budget) => budget.id)
+          .toList(growable: false);
+    });
+    _persistReorder(
+      householdId: householdId,
+      generation: generation,
+      budgets: confirmedBudgets,
+      intent: intent,
+    );
+  }
+
+  Future<void> _persistReorder({
+    required String householdId,
+    required int generation,
+    required List<Budget> budgets,
+    required BudgetReorderIntent intent,
+  }) async {
+    final repository = ref.read(budgetRepositoryProvider);
+    final result = await executeBudgetReorder(
+      repository: repository,
+      budgets: budgets,
+      intent: intent,
+      refreshCanonical: () => _refreshCanonicalBudgets(householdId),
+      persistReorder: (items) =>
+          repository.reorderBudgets(items, householdId: householdId),
+    );
+    if (!mounted || generation != _reorderGeneration) return;
+    setState(() {
+      _reorderPhase = _HouseholdReorderPhase.idle;
+      _optimisticOrderIds = null;
+      if (result.isSuccess) {
+        _confirmedBudgets = List<Budget>.unmodifiable(result.budgets);
+      }
+    });
+    if (result.isSuccess || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.isConflict
+              ? 'La lista cambió. Actualiza e intenta reordenar de nuevo.'
+              : 'No se pudo guardar el orden. Intenta nuevamente.',
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -743,7 +850,11 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
     WidgetRef ref,
     String householdId,
   ) {
-    final budgetsAsync = ref.watch(budgetsListProvider(householdId));
+    final target = budgetsListProvider(householdId);
+    final budgetsAsync = ref.watch(target);
+    ref.listen<AsyncValue<List<Budget>>>(target, (_, next) {
+      next.whenData(_acceptCanonicalBudgets);
+    });
 
     final incomeA = double.tryParse(_incomeAController.text) ?? 0;
     final incomeB = double.tryParse(_incomeBController.text) ?? 0;
@@ -796,31 +907,59 @@ class _HouseholdBudgetTabState extends ConsumerState<HouseholdBudgetTab> {
                 ),
               );
             }
+            final displayedBudgets = _visibleBudgets(budgets);
             return Column(
-              children: budgets.map((b) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: BudgetCard(
-                    budget: b,
-                    currentAmount: b.currentAmount,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BudgetHistoryScreen(budget: b),
-                      ),
+              children: [
+                if (_isReordering) ...[
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Guardando orden...',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    onEdit: () =>
-                        _showEditGoalDialog(context, ref, householdId, b),
-                    onDelete: () => confirmDeleteBudget(
-                      context,
-                      ref,
-                      b,
-                      invalidateTarget: budgetsListProvider(householdId),
-                    ),
-                    splitRatio: splitRatio,
-                    showSplit: true,
                   ),
-                );
-              }).toList(),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                IgnorePointer(
+                  ignoring: _isReordering,
+                  child: ReorderableListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onReorder: (oldIndex, newIndex) => _startReorder(
+                      householdId: householdId,
+                      visibleBudgets: displayedBudgets,
+                      oldIndex: oldIndex,
+                      newIndex: newIndex,
+                    ),
+                    children: displayedBudgets.map((b) {
+                      return Padding(
+                        key: ValueKey('household-budget-${b.id}'),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: BudgetCard(
+                          budget: b,
+                          currentAmount: b.currentAmount,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BudgetHistoryScreen(budget: b),
+                            ),
+                          ),
+                          onEdit: () =>
+                              _showEditGoalDialog(context, ref, householdId, b),
+                          onDelete: () => confirmDeleteBudget(
+                            context,
+                            ref,
+                            b,
+                            invalidateTarget: budgetsListProvider(householdId),
+                          ),
+                          splitRatio: splitRatio,
+                          showSplit: true,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),

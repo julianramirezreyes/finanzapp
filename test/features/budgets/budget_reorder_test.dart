@@ -8,6 +8,7 @@ import 'package:finanzapp_v2/features/budgets/data/budgets_provider.dart';
 import 'package:finanzapp_v2/features/budgets/domain/budget.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/personal_budget_tab.dart';
 import 'package:finanzapp_v2/features/budgets/presentation/reorder_budgets_action.dart';
+import 'package:finanzapp_v2/features/budgets/presentation/widgets/budget_card.dart';
 import 'package:finanzapp_v2/features/household/data/household_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,7 +35,10 @@ class _RecordingRepository extends BudgetRepository {
   final List<List<Budget>> requests = [];
 
   @override
-  Future<void> reorderBudgets(List<Budget> budgets) async {
+  Future<void> reorderBudgets(
+    List<Budget> budgets, {
+    String? householdId,
+  }) async {
     requests.add(List<Budget>.unmodifiable(budgets));
     final response = _responses.removeAt(0);
     if (response != null) throw response;
@@ -48,11 +52,73 @@ class _DelayedRecordingRepository extends BudgetRepository {
   final List<List<Budget>> requests = [];
 
   @override
-  Future<void> reorderBudgets(List<Budget> budgets) async {
+  Future<void> reorderBudgets(
+    List<Budget> budgets, {
+    String? householdId,
+  }) async {
     requests.add(List<Budget>.unmodifiable(budgets));
     await gate.future;
   }
 }
+
+class _MutableBudgets {
+  _MutableBudgets(this.value);
+
+  List<Budget> value;
+}
+
+class _ScriptedRepository extends BudgetRepository {
+  _ScriptedRepository(this._steps) : super(Dio());
+
+  final List<FutureOr<void> Function(List<Budget>)> _steps;
+  final List<List<Budget>> requests = [];
+
+  @override
+  Future<void> reorderBudgets(
+    List<Budget> budgets, {
+    String? householdId,
+  }) async {
+    requests.add(List<Budget>.unmodifiable(budgets));
+    await _steps.removeAt(0)(budgets);
+  }
+}
+
+Future<ProviderContainer> _pumpReorderTab(
+  WidgetTester tester, {
+  required _MutableBudgets source,
+  required BudgetRepository repository,
+}) async {
+  final container = ProviderContainer(
+    overrides: [
+      userProvider.overrideWithValue(fakeUser()),
+      householdProvider.overrideWith((ref) async => null),
+      budgetConfigProvider((
+        type: 'personal',
+        householdId: null,
+      )).overrideWith((ref) async => fakePersonalConfig()),
+      budgetsListProvider(null).overrideWith((ref) async => source.value),
+      budgetRepositoryProvider.overrideWithValue(repository),
+    ],
+  );
+  addTearDown(container.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: Scaffold(body: PersonalBudgetTab())),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return container;
+}
+
+void _reorder(WidgetTester tester, int oldIndex, int newIndex) {
+  tester
+      .widget<ReorderableListView>(find.byType(ReorderableListView))
+      .onReorder!(oldIndex, newIndex);
+}
+
+List<BudgetCard> _visibleBudgetCards(WidgetTester tester) =>
+    tester.widgetList<BudgetCard>(find.byType(BudgetCard)).toList();
 
 void main() {
   test(
@@ -351,6 +417,131 @@ void main() {
 
     gate.complete();
     await tester.pumpAndSettle();
+    expect(repository.requests, hasLength(1));
+  });
+
+  testWidgets(
+    'mounted success reconciles the confirmed order and allows a consecutive reorder',
+    (tester) async {
+      final firstSave = Completer<void>();
+      final source = _MutableBudgets([
+        _budget('a', 0),
+        _budget('b', 1),
+        _budget('c', 2),
+      ]);
+      final repository = _ScriptedRepository([(_) => firstSave.future, (_) {}]);
+      final container = await _pumpReorderTab(
+        tester,
+        source: source,
+        repository: repository,
+      );
+
+      _reorder(tester, 0, 3);
+      await tester.pump();
+      expect(_visibleBudgetCards(tester).map((card) => card.budget.id), [
+        'b',
+        'c',
+        'a',
+      ]);
+
+      source.value = [_budget('b', 0), _budget('c', 1), _budget('a', 2)];
+      firstSave.complete();
+      await tester.pumpAndSettle();
+      expect(_visibleBudgetCards(tester).map((card) => card.budget.id), [
+        'b',
+        'c',
+        'a',
+      ]);
+      expect(find.text('Guardando orden...'), findsNothing);
+
+      source.value = [_budget('c', 0), _budget('a', 1), _budget('b', 2)];
+      _reorder(tester, 0, 3);
+      await tester.pumpAndSettle();
+      expect(repository.requests, hasLength(2));
+      expect(_visibleBudgetCards(tester).map((card) => card.budget.id), [
+        'c',
+        'a',
+        'b',
+      ]);
+      expect(container.read(budgetsListProvider(null)).value, source.value);
+    },
+  );
+
+  testWidgets(
+    'provider refresh rebases optimistic IDs onto authoritative movement amounts',
+    (tester) async {
+      final save = Completer<void>();
+      final source = _MutableBudgets([_budget('a', 0), _budget('b', 1)]);
+      final repository = _ScriptedRepository([(_) => save.future]);
+      final container = await _pumpReorderTab(
+        tester,
+        source: source,
+        repository: repository,
+      );
+
+      _reorder(tester, 0, 2);
+      await tester.pump();
+      source.value = [
+        _budget('a', 0, currentAmount: 42),
+        _budget('b', 1, currentAmount: 17),
+      ];
+      container.invalidate(budgetsListProvider(null));
+      await tester.pump();
+      await tester.pump();
+
+      final cards = _visibleBudgetCards(tester);
+      expect(cards.map((card) => card.budget.id), ['b', 'a']);
+      expect(cards.map((card) => card.currentAmount), [17, 42]);
+      save.complete();
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'mounted conflict rollback restores canonical order and explains it',
+    (tester) async {
+      final source = _MutableBudgets([_budget('a', 0), _budget('b', 1)]);
+      final repository = _ScriptedRepository([
+        (_) async => throw BudgetRepositoryFailure(statusCode: 409),
+        (_) async => throw BudgetRepositoryFailure(statusCode: 500),
+      ]);
+      await _pumpReorderTab(tester, source: source, repository: repository);
+
+      _reorder(tester, 0, 2);
+      await tester.pumpAndSettle();
+
+      expect(_visibleBudgetCards(tester).map((card) => card.budget.id), [
+        'a',
+        'b',
+      ]);
+      expect(
+        find.text('La lista cambió. Actualiza e intenta reordenar de nuevo.'),
+        findsOneWidget,
+      );
+      expect(repository.requests, hasLength(2));
+    },
+  );
+
+  testWidgets('mounted non-conflict failure restores order without retry', (
+    tester,
+  ) async {
+    final source = _MutableBudgets([_budget('a', 0), _budget('b', 1)]);
+    final repository = _ScriptedRepository([
+      (_) async => throw BudgetRepositoryFailure(statusCode: 500),
+    ]);
+    await _pumpReorderTab(tester, source: source, repository: repository);
+
+    _reorder(tester, 0, 2);
+    await tester.pumpAndSettle();
+
+    expect(_visibleBudgetCards(tester).map((card) => card.budget.id), [
+      'a',
+      'b',
+    ]);
+    expect(
+      find.text('No se pudo guardar el orden. Intenta nuevamente.'),
+      findsOneWidget,
+    );
     expect(repository.requests, hasLength(1));
   });
 }
